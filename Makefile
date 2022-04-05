@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -O0 -Wall -I . -g
+CFLAGS = -O2 -Wall -I .
 LDFLAGS = -I . -pthread
 
 SRCS = $(wildcard *.c)

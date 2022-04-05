@@ -135,7 +135,7 @@ uct_show_version_info(void)
 
     if (uct_show_help) {
         uct_write_stderr(
-            "Usage: nginx [-?hv] [-c filename] " UCT_LINEFEED
+            "Usage: umicat [-?hv] [-c filename] " UCT_LINEFEED
             "Options:" UCT_LINEFEED "  -?,-h         : this help" UCT_LINEFEED
             "  -v            : show version and exit" UCT_LINEFEED
             "  -c filename   : set configuration file (default: " UCT_CONF_PATH

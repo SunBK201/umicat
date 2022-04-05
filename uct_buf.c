@@ -205,7 +205,7 @@ uct_chain_get_free_buf(uct_pool_t *p, uct_chain_t **free)
  *
  * 释放BUF
  * 1. 如果buf不为空，则不释放
- * 2. 如果cl->buf->tag标记不一样，则直接还给Nginx的pool->chain链表
+ * 2. 如果cl->buf->tag标记不一样，则直接还给pool->chain链表
  * 3. 如果buf为空，并且需要释放，则直接释放buf，并且放到free的空闲列表上
  */
 void
