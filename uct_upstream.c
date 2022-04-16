@@ -15,7 +15,8 @@ static uct_connection_t *uct_upstream_ip_hash_get_conn(uct_cycle_t *wk_cycle,
     uct_connection_t *client);
 static uct_uint_t uct_upstream_least_conn_get(uct_array_t *srvs, uct_uint_t n,
     sem_t *mutex, uct_log_t *log);
-static uct_connection_t *uct_upstream_least_conn_get_conn(uct_cycle_t *wk_cycle);
+static uct_connection_t *uct_upstream_least_conn_get_conn(
+    uct_cycle_t *wk_cycle);
 static uct_inline uct_int_t power(uct_int_t i, uct_int_t j);
 
 uct_array_t *srvs;
@@ -40,7 +41,8 @@ uct_upstream_get_connetion(uct_cycle_t *wk_cycle, uct_connection_t *client)
     uct_log(wk_cycle->log, UCT_LOG_INFO, "get upstream connection: %s:%s",
         conn->ip_text, conn->port_text);
 
-    uct_nonblocking(conn->fd);
+    if(wk_cycle->mode == UCT_TCP_MODE)
+        uct_nonblocking(conn->fd);
 
     return conn;
 }
@@ -98,7 +100,16 @@ uct_upstream_round_robin_get_conn(uct_cycle_t *wk_cycle)
     upstream_port = uct_pnalloc(wk_cycle->pool, UCT_INET_PORTSTRLEN);
     uct_itoa(srv->upstream_port, upstream_port, 10);
 
-    fd = uct_open_clientfd(srv->upstream_ip, upstream_port, wk_cycle);
+    if (wk_cycle->mode == UCT_TCP_MODE) {
+        fd = uct_open_clientfd(srv->upstream_ip, upstream_port, wk_cycle);
+    } else if (wk_cycle->mode == UCT_UDP_MODE) {
+        fd = uct_open_clientfd_udp(srv->upstream_ip, upstream_port, wk_cycle);
+    } else {
+        uct_log(wk_cycle->log, UCT_LOG_ERROR, "upstream mode error, mode: %d",
+            wk_cycle->mode);
+        return NULL;
+    }
+
     if (fd <= 0) {
         uct_log(wk_cycle->log, UCT_LOG_ERROR,
             "open upstream connection error, ip: %s, port: %s",

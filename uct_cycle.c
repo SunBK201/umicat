@@ -7,6 +7,7 @@
 
 static void uct_start_worker_threads(uct_cycle_t *cycle, uct_int_t n);
 static void *uct_worker_thread_cycle(void *cycle);
+static void *uct_worker_thread_cycle_udp(void *cycle);
 static uct_int_t uct_conf_parse(uct_cycle_t *cycle);
 static uct_int_t uct_process_options(uct_cycle_t *cycle);
 
@@ -37,7 +38,7 @@ uct_init_cycle(uct_log_t *log)
     cycle->log = log;
     cycle->workers_n = 4;
 
-    if(uct_process_options(cycle) != UCT_OK) {
+    if (uct_process_options(cycle) != UCT_OK) {
         uct_destroy_pool(pool);
         return NULL;
     }
@@ -208,6 +209,7 @@ uct_master_thread_cycle(uct_cycle_t *cycle)
         uct_log(cycle->log, UCT_LOG_ERROR, "uct_open_listenfd failed");
         return;
     }
+    cycle->listenfd = listenfd;
 
     // uct_nonblocking(listenfd);
 
@@ -237,6 +239,28 @@ uct_master_thread_cycle(uct_cycle_t *cycle)
     uct_close_socket(listenfd);
 }
 
+void
+uct_master_thread_cycle_udp(uct_cycle_t *cycle)
+{
+    uct_socket_t listenfd;
+    char localport[UCT_INET_PORTSTRLEN];
+
+    listenfd =
+        uct_open_listenfd_udp(uct_itoa(cycle->localport, localport, 10), cycle);
+    if (listenfd < 0) {
+        uct_log(cycle->log, UCT_LOG_ERROR, "uct_open_listenfd_udp failed");
+        return;
+    }
+    cycle->listenfd = listenfd;
+    uct_log(cycle->log, UCT_LOG_INFO, "start listen: %d", cycle->localport);
+    uct_start_worker_threads(cycle, cycle->workers_n);
+
+    while (1) {
+        /* null */
+    }
+    uct_close_socket(listenfd);
+}
+
 static void
 uct_start_worker_threads(uct_cycle_t *cycle, uct_int_t n)
 {
@@ -245,10 +269,21 @@ uct_start_worker_threads(uct_cycle_t *cycle, uct_int_t n)
 
     uct_log(cycle->log, UCT_LOG_NOTICE, "start worker threads");
 
-    for (i = 0; i < n; i++) {
-        if (uct_pthread_create(&tid, NULL, uct_worker_thread_cycle,
-                (void *)cycle)) {
-            uct_log(cycle->log, UCT_LOG_ERROR, "create thread worker failed");
+    if (cycle->mode == UCT_TCP_MODE) {
+        for (i = 0; i < n; i++) {
+            if (uct_pthread_create(&tid, NULL, uct_worker_thread_cycle,
+                    (void *)cycle)) {
+                uct_log(cycle->log, UCT_LOG_ERROR,
+                    "create thread worker failed");
+            }
+        }
+    } else if (cycle->mode == UCT_UDP_MODE) {
+        for (i = 0; i < n; i++) {
+            if (uct_pthread_create(&tid, NULL, uct_worker_thread_cycle_udp,
+                    (void *)cycle)) {
+                uct_log(cycle->log, UCT_LOG_ERROR,
+                    "create thread worker failed");
+            }
         }
     }
 }
@@ -302,6 +337,77 @@ uct_worker_thread_cycle(void *arg)
             wk_cycle->connection_n++;
         }
         uct_epoll_process_events(wk_cycle);
+    }
+
+    return NULL;
+}
+
+static void *
+uct_worker_thread_cycle_udp(void *arg)
+{
+    pthread_t tid;
+    uct_cycle_t *cycle;
+    uct_cycle_t *wk_cycle;
+    uct_pool_t *pool;
+    char *buf;
+    struct sockaddr_in clientaddr;
+    struct sockaddr_in servaddr;
+    socklen_t clientlen;
+    uct_uint_t n;
+    uct_connection_t *cli_conn;
+    uct_connection_t *up_conn;
+
+    tid = uct_pthread_self();
+    uct_pthread_detach(tid);
+
+    cycle = (uct_cycle_t *)arg;
+
+    pool = uct_create_pool(UCT_DEFAULT_POOL_SIZE, cycle->log);
+    wk_cycle = uct_palloc(pool, sizeof(uct_cycle_t));
+    uct_memcpy(wk_cycle, cycle, sizeof(uct_cycle_t));
+    wk_cycle->pool = pool;
+    wk_cycle->master = cycle;
+    wk_cycle->connection_n = 0;
+
+    if (uct_epoll_init(wk_cycle) != UCT_OK) {
+        return NULL;
+    }
+
+    uct_log(cycle->log, UCT_LOG_INFO, "thread worker start: %x", tid);
+
+    buf = malloc(UCT_DEFAULT_POOL_SIZE);
+    clientlen = sizeof(clientaddr);
+    while (1) {
+        n = recvfrom(wk_cycle->listenfd, buf, UCT_DEFAULT_POOL_SIZE, 0,
+            (struct sockaddr *)&clientaddr, &clientlen);
+
+        cli_conn = uct_connection_init(cycle, cycle->listenfd);
+
+        uct_getnameinfo((struct sockaddr *)&clientaddr, clientlen,
+            cli_conn->ip_text, UCT_INET_ADDRSTRLEN, cli_conn->port_text,
+            UCT_INET_PORTSTRLEN, NI_NUMERICHOST | NI_NUMERICSERV, cycle);
+
+        uct_log(cycle->log, UCT_LOG_INFO, "accepted udp packet from (%s:%s)",
+            cli_conn->ip_text, cli_conn->port_text);
+
+        up_conn = uct_upstream_get_connetion(wk_cycle, cli_conn);
+        bzero(&servaddr, sizeof(servaddr));
+        servaddr.sin_family = AF_INET;
+        inet_pton(AF_INET, up_conn->ip_text, &servaddr.sin_addr);
+        servaddr.sin_port = htons(atoi(up_conn->port_text));
+        n = sendto(up_conn->fd, buf, n, 0, (struct sockaddr *)&servaddr,
+            sizeof(servaddr));
+        // n = recvfrom(up_conn->fd, buf, UCT_DEFAULT_POOL_SIZE, 0,
+        //     NULL, 0);
+        // n = sendto(cycle->listenfd, buf, n, 0, (struct sockaddr *)&clientaddr,
+        //     clientlen);
+        // if (n == -1) {
+        //     uct_log(cycle->log, UCT_LOG_ERROR, "sendto error: %s",
+        //         strerror(errno));
+        // }
+        uct_close_socket(up_conn->fd);
+        uct_destroy_pool(up_conn->pool);
+        uct_destroy_pool(cli_conn->pool);
     }
 
     return NULL;

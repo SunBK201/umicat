@@ -52,7 +52,12 @@ main(int argc, char *const *argv)
         return UCT_ERROR;
     }
 
-    uct_master_thread_cycle(cycle);
+    if (cycle->mode == UCT_TCP_MODE)
+        uct_master_thread_cycle(cycle);
+    else if (cycle->mode == UCT_UDP_MODE)
+        uct_master_thread_cycle_udp(cycle);
+    else
+        uct_log(log, UCT_LOG_FATAL, "umicat mode false");
 
     return UCT_OK;
 }

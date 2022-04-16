@@ -26,6 +26,7 @@ struct uct_cycle_s {
     char *conf_file;
     uct_uint_t mode;
     uct_uint_t localport;
+    uct_socket_t listenfd;
     uct_listening_pool_t *lpool;
     uct_uint_t connection_n;
     uct_connection_t *connections;
@@ -43,5 +44,6 @@ struct uct_cycle_s {
 
 uct_cycle_t *uct_init_cycle(uct_log_t *log);
 void uct_master_thread_cycle(uct_cycle_t *cycle);
+void uct_master_thread_cycle_udp(uct_cycle_t *cycle);
 
 #endif /* _UCT_CYCLE_H_INCLUDED_ */

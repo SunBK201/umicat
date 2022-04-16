@@ -187,6 +187,48 @@ uct_open_listenfd(char *port, uct_cycle_t *cycle)
 }
 
 uct_int_t
+uct_open_listenfd_udp(char *port, uct_cycle_t *cycle)
+{
+    struct addrinfo hints, *listp, *p;
+    uct_socket_t listenfd;
+    int optval = 1;
+
+    /* Get a list of potential server addresses */
+    uct_memzero(&hints, sizeof(struct addrinfo));
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_flags = AI_PASSIVE | AI_ADDRCONFIG; /* ... on any IP address */
+    hints.ai_flags |= AI_NUMERICSERV;            /* ... using port number */
+    uct_getaddrinfo(NULL, port, &hints, &listp, cycle);
+
+    /* Walk the list for one that we can bind to */
+    for (p = listp; p; p = p->ai_next) {
+        /* Create a socket descriptor */
+        if ((listenfd = uct_socket(p->ai_family, p->ai_socktype, p->ai_protocol,
+                 cycle)) < 0)
+            continue; /* Socket failed, try the next */
+
+        /* Eliminates "Address already in use" error from bind */
+        uct_setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR,
+            (const void *)&optval, sizeof(optval), cycle);
+
+        uct_setsockopt(listenfd, SOL_SOCKET, SO_REUSEPORT,
+            (const void *)&optval, sizeof(optval), cycle);
+
+        /* Bind the descriptor to the address */
+        if (uct_bind(listenfd, p->ai_addr, p->ai_addrlen, cycle) == 0)
+            break;                  /* Success */
+        uct_close_socket(listenfd); /* Bind failed, try the next */
+    }
+
+    /* Clean up */
+    uct_freeaddrinfo(listp);
+    if (!p) /* No address worked */
+        return -1;
+
+    return listenfd;
+}
+
+uct_int_t
 uct_open_clientfd(char *hostname, char *port, uct_cycle_t *cycle)
 {
     int clientfd;
@@ -210,6 +252,36 @@ uct_open_clientfd(char *hostname, char *port, uct_cycle_t *cycle)
         if (uct_connect(clientfd, p->ai_addr, p->ai_addrlen, cycle) != -1)
             break;                  /* Success */
         uct_close_socket(clientfd); /* Connect failed, try another */
+    }
+
+    /* Clean up */
+    uct_freeaddrinfo(listp);
+    if (!p) /* All connects failed */
+        return -1;
+    else /* The last connect succeeded */
+        return clientfd;
+}
+
+uct_int_t
+uct_open_clientfd_udp(char *hostname, char *port, uct_cycle_t *cycle)
+{
+    int clientfd;
+    struct addrinfo hints, *listp, *p;
+
+    /* Get a list of potential server addresses */
+    uct_memzero(&hints, sizeof(struct addrinfo));
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_flags = AI_NUMERICSERV; /* ... using a numeric port arg. */
+    hints.ai_flags |= AI_ADDRCONFIG; /* Recommended for connections */
+    uct_getaddrinfo(hostname, port, &hints, &listp, cycle);
+
+    /* Walk the list for one that we can successfully connect to */
+    for (p = listp; p; p = p->ai_next) {
+        /* Create a socket descriptor */
+        if ((clientfd = uct_socket(p->ai_family, p->ai_socktype, p->ai_protocol,
+                 cycle)) < 0)
+            continue; /* Socket failed, try the next */
+        break;                  /* Success */
     }
 
     /* Clean up */

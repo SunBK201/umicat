@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -O2 -Wall -I .
+CFLAGS = -O0 -Wall -I . -g
 LDFLAGS = -I . -pthread
 
 SRCS = $(wildcard *.c)
@@ -19,4 +19,4 @@ $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -c $^
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJS) $(TARGET) umicat.log
