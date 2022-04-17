@@ -36,14 +36,15 @@ uct_listening_pool_init(uct_cycle_t *cycle, uct_listening_pool_t *lpool)
     uct_connection_t *listen;
     uct_int_t n;
 
-    n = uct_lock_init(&lpool->mutex, 0, 1, cycle->log);
-    if (n != UCT_OK) {
-        return UCT_ERROR;
-    }
+    // n = uct_lock_init(&lpool->mutex, 0, 1, cycle->log);
+    // if (n != UCT_OK) {
+    //     return UCT_ERROR;
+    // }
     n = uct_lock_init(&lpool->items, 0, 0, cycle->log);
     if (n != UCT_OK) {
         return UCT_ERROR;
     }
+    pthread_spin_init(&lpool->mutex, 1);
 
     listen = uct_palloc(cycle->pool, sizeof(uct_connection_t));
     uct_queue_init(&listen->queue);
@@ -60,7 +61,8 @@ uct_listening_pool_add(uct_listening_pool_t *lpool, uct_connection_t *conn)
 {
     uct_int_t n;
 
-    n = uct_lock_p(&lpool->mutex, lpool->cycle->log);
+    // n = uct_lock_p(&lpool->mutex, lpool->cycle->log);
+    n = pthread_spin_lock(&lpool->mutex);
     if (n != UCT_OK) {
         return NULL;
     }
@@ -73,7 +75,8 @@ uct_listening_pool_add(uct_listening_pool_t *lpool, uct_connection_t *conn)
     uct_log(lpool->cycle->log, UCT_LOG_DEBUG, "connfd: %d", conn->fd);
 #endif
 
-    uct_lock_v(&lpool->mutex, lpool->cycle->log);
+    // uct_lock_v(&lpool->mutex, lpool->cycle->log);
+    n = pthread_spin_unlock(&lpool->mutex);
     uct_lock_v(&lpool->items, lpool->cycle->log);
 
     return UCT_OK;
@@ -90,7 +93,8 @@ uct_listening_pool_get(uct_listening_pool_t *lpool)
     if (n != UCT_OK) {
         return NULL;
     }
-    n = uct_trylock_p(&lpool->mutex, lpool->cycle->log);
+    // n = uct_trylock_p(&lpool->mutex, lpool->cycle->log);
+    n = pthread_spin_lock(&lpool->mutex);
     if (n != UCT_OK) {
         uct_lock_v(&lpool->items, lpool->cycle->log);
         return NULL;
@@ -99,7 +103,8 @@ uct_listening_pool_get(uct_listening_pool_t *lpool)
     q = uct_queue_last(&lpool->listen_q->queue);
     uct_queue_remove(q);
 
-    uct_lock_v(&lpool->mutex, lpool->cycle->log);
+    // uct_lock_v(&lpool->mutex, lpool->cycle->log);
+    pthread_spin_unlock(&lpool->mutex);
 
     conn = uct_queue_data(q, uct_connection_t, queue);
 

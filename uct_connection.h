@@ -22,8 +22,9 @@ struct uct_connection_s {
 struct uct_listening_pool_s {
     uct_connection_t *listen_q;
     uct_cycle_t *cycle;
-    sem_t mutex;
+    // sem_t mutex;
     sem_t items;
+    pthread_spinlock_t mutex;
 };
 
 struct uct_proxy_s {

@@ -19,4 +19,4 @@ $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -c $^
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJS) $(TARGET) umicat.log
