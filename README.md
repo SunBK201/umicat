@@ -1,5 +1,5 @@
 # umicat
-umicat is a TCP reverse proxy server.
+umicat is a TCP/UDP reverse proxy load balance server.
 
 # Build
 ```bash
@@ -7,6 +7,12 @@ make
 ```
 
 # Usage
+
+## Load Balance Policy
+- `round_robin`: Round-robin load balance policy.
+- `ip_hash`: IP hash load balance policy.
+- `least_conn`: Least-connection load balance policy.
+
 Please configure `conf/umicat.conf` before you start using it:
 ```bash
 {
