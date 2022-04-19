@@ -1,22 +1,23 @@
 CC = gcc
-CFLAGS = -O2 -Wall -I .
-LDFLAGS = -I . -pthread
+CFLAGS = -I. -Wall -O2
+LDLIBS = -pthread
 
 SRCS = $(wildcard *.c)
-
-OBJS = $(patsubst %c, %o, $(SRCS))
-
+OBJS = $(patsubst %.c, %.o, $(SRCS))
 TARGET = umicat
 
-.PHONY:all clean
+.PHONY: all clean debug
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) $(LDFLAGS) $(LDLIBS) -o $@ $^
 
-%.o:%.c
+$(OBJS): $(SRCS)
 	$(CC) $(CFLAGS) -c $^
+
+debug: $(SRCS)
+	$(CC) -I. -Wall -pthread -O0 -g -o umicat $^
 
 clean:
 	rm -f $(OBJS) $(TARGET) umicat.log
