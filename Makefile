@@ -1,23 +1,32 @@
 CC = gcc
-CFLAGS = -I. -Wall -O2
+CFLAGS = -I${DIR_INC} -Wall -O2
+CFLAGS_DEBUG = -I${DIR_INC} -Wall -O0 -g
 LDLIBS = -pthread
 
-SRCS = $(wildcard *.c)
-OBJS = $(patsubst %.c, %.o, $(SRCS))
+DIR_SRC = src
+DIR_INC = include
+DIR_OBJ = obj
+
+SRCS = $(wildcard ${DIR_SRC}/*.c)
+INCS = $(wildcard $(DIR_INC)/*.h)
+OBJS = $(patsubst %.c, ${DIR_OBJ}/%.o, $(notdir ${SRCS}))
 TARGET = umicat
 
-.PHONY: all clean debug
+.PHONY: all clean install uninstall debug
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CC) $(LDFLAGS) $(LDLIBS) -o $@ $^
 
-$(OBJS): $(SRCS)
-	$(CC) $(CFLAGS) -c $^
+$(DIR_OBJ)/%.o: $(DIR_SRC)/%.c | $(DIR_OBJ)
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+$(DIR_OBJ):
+	mkdir -p $@
 
 debug: $(SRCS)
-	$(CC) -I. -Wall -pthread -O0 -g -o umicat $^
+	$(CC) ${CFLAGS_DEBUG} $(LDLIBS) -o $(TARGET) $^
 
 clean:
-	rm -f $(OBJS) $(TARGET) umicat.log
+	rm -rf $(DIR_OBJ) $(TARGET) umicat.log
