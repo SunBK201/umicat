@@ -14,7 +14,7 @@ sudo make install
 - `ip_hash`: IP hash load balance policy.
 - `least_conn`: Least-connection load balance policy.
 
-Please configure `etc/umicat/umicat.conf` before you start using it:
+Please configure `/etc/umicat/umicat.conf` before you start using it:
 ```bash
 {
     "mode": "tcp",
