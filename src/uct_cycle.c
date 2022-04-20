@@ -56,6 +56,17 @@ uct_init_cycle(uct_log_t *log)
         return NULL;
     }
 
+    if (cycle->log_file != NULL &&
+        !uct_same_file("umicat.log", (char *)cycle->log_file)) {
+        uct_log(log, UCT_LOG_INFO, "log file: %s", cycle->log_file);
+        fclose(cycle->log->file);
+        if (0 != access(dirname(strdup((char *)cycle->log_file)), F_OK))
+            mkdir(dirname(strdup((char *)cycle->log_file)), 0755);
+        uct_copy_file((char *)cycle->log_file, "umicat.log");
+        unlink("umicat.log");
+        cycle->log->file = fopen((char *)cycle->log_file, "a");
+    }
+
     n = uct_lock_init(&cycle->mutex, 0, 1, log);
     if (n != UCT_OK) {
         return NULL;
@@ -399,7 +410,8 @@ uct_worker_thread_cycle_udp(void *arg)
             sizeof(servaddr));
         // n = recvfrom(up_conn->fd, buf, UCT_DEFAULT_POOL_SIZE, 0,
         //     NULL, 0);
-        // n = sendto(cycle->listenfd, buf, n, 0, (struct sockaddr *)&clientaddr,
+        // n = sendto(cycle->listenfd, buf, n, 0, (struct sockaddr
+        // *)&clientaddr,
         //     clientlen);
         // if (n == -1) {
         //     uct_log(cycle->log, UCT_LOG_ERROR, "sendto error: %s",

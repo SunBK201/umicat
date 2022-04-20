@@ -28,7 +28,9 @@
 #include <semaphore.h>
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
+#include <libgen.h>
 
+#define _XOPEN_SOURCE_EXTENDED 1
 
 typedef intptr_t uct_int_t;
 typedef uintptr_t uct_uint_t;
