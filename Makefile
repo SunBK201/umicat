@@ -27,18 +27,23 @@ $(DIR_OBJ)/%.o: $(DIR_SRC)/%.c | $(DIR_OBJ)
 $(DIR_OBJ):
 	mkdir -p $@
 
-install: 
+install:
 	install -Dm755 "umicat" "$(PREFIX)/bin/umicat"
-	test -d '/etc/umicat' || mkdir -p /etc/umicat
-	cp conf/umicat.conf /etc/umicat/
-	test -d '/var/log/umicat' || mkdir -p /var/log/umicat
-	cp systemd/umicat.service /lib/systemd/system/
+	test -d '$(PREFIX)/etc/umicat' || mkdir -p "$(PREFIX)/etc/umicat"
+	cat "conf/umicat.conf" > "$(PREFIX)/etc/umicat/umicat.conf"
+	test -d '/var/log/umicat' || mkdir -p "/var/log/umicat"
+	cat "systemd/umicat.service" > "/etc/systemd/system/umicat.service"
+	systemctl daemon-reload
+	systemctl enable "/etc/systemd/system/umicat.service"
 
 uninstall:
-	rm $(PREFIX)/bin/umicat
-	rm -rf /etc/umicat
-	rm -rf /var/log/umicat
-	rm /lib/systemd/system/umicat.service
+	systemctl stop "umicat.service"
+	systemctl disable "umicat.service"
+	rm -f "/etc/systemd/system/umicat.service"
+	systemctl daemon-reload
+	rm -f "$(PREFIX)/bin/umicat"
+	rm -rf "$(PREFIX)/etc/umicat"
+	rm -rf "/var/log/umicat"
 
 test: debug
 	./umicat -c conf/umicat.conf -l umicat.log
