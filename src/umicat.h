@@ -9,6 +9,6 @@
 #define UMICAT_VERSION "0.1.0"
 #define UMICAT_VER     "umicat/" UMICAT_VERSION
 
-#define UCT_CONF_PATH  "conf/umicat.conf"
+#define UCT_CONF_PATH  "/etc/umicat/umicat.conf"
 
 #endif /* _UMICAT_H_INCLUDED_ */

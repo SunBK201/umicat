@@ -44,7 +44,7 @@ uct_init_cycle(uct_log_t *log)
     }
 
     if (cycle->conf_file == NULL) {
-        cycle->conf_file = "conf/umicat.conf";
+        cycle->conf_file = UCT_CONF_PATH;
     }
 
     cycle->log_file = uct_palloc(cycle->pool, 64);
@@ -93,6 +93,11 @@ uct_conf_parse(uct_cycle_t *cycle)
     stat(cycle->conf_file, &info);
     size = info.st_size;
     conf = fopen(cycle->conf_file, "r");
+    if (conf == NULL) {
+        uct_log(cycle->log, UCT_LOG_FATAL, "open conf file: %s failed",
+            cycle->conf_file);
+        return UCT_ERROR;
+    }
     buf = uct_palloc(cycle->pool, size);
     size = fread(buf, 1, size, conf);
 

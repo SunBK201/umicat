@@ -19,6 +19,7 @@ typedef struct uct_upstream_srv_s uct_upstream_srv_t;
 typedef struct uct_proxy_s uct_proxy_t;
 
 
+#include <umicat.h>
 #include <uct_json.h>
 #include <uct_log.h>
 #include <uct_string.h>
