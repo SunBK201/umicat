@@ -5,7 +5,7 @@ LDLIBS = -pthread
 
 DIR_SRC = src
 DIR_INC = src
-DIR_OBJ = obj
+DIR_OBJ = objs
 
 SRCS = $(wildcard ${DIR_SRC}/*.c)
 INCS = $(wildcard $(DIR_INC)/*.h)
