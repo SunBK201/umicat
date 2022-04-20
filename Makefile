@@ -3,16 +3,18 @@ CFLAGS = -I${DIR_INC} -Wall -O2
 CFLAGS_DEBUG = -I${DIR_INC} -Wall -O0 -g
 LDLIBS = -pthread
 
+PREFIX = /usr/local
+
 DIR_SRC = src
-DIR_INC = include
-DIR_OBJ = obj
+DIR_INC = src
+DIR_OBJ = objs
 
 SRCS = $(wildcard ${DIR_SRC}/*.c)
 INCS = $(wildcard $(DIR_INC)/*.h)
 OBJS = $(patsubst %.c, ${DIR_OBJ}/%.o, $(notdir ${SRCS}))
 TARGET = umicat
 
-.PHONY: all clean install uninstall debug
+.PHONY: all clean install uninstall test debug
 
 all: $(TARGET)
 
@@ -24,6 +26,20 @@ $(DIR_OBJ)/%.o: $(DIR_SRC)/%.c | $(DIR_OBJ)
 
 $(DIR_OBJ):
 	mkdir -p $@
+
+install: 
+	install -Dm755 "umicat" "$(PREFIX)/bin/umicat"
+	test -d '/etc/umicat' || mkdir -p /etc/umicat
+	cp conf/umicat.conf /etc/umicat/
+	test -d '/var/log/umicat' || mkdir -p /var/log/umicat
+
+uninstall:
+	rm $(PREFIX)/bin/umicat
+	rm -rf /etc/umicat
+	rm -rf /var/log/umicat
+
+test: debug
+	./umicat -c conf/umicat.conf -l umicat.log
 
 debug: $(SRCS)
 	$(CC) ${CFLAGS_DEBUG} $(LDLIBS) -o $(TARGET) $^

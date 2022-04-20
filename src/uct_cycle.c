@@ -14,6 +14,7 @@ static uct_int_t uct_process_options(uct_cycle_t *cycle);
 extern uct_array_t *srvs;
 extern uct_uint_t srvs_n;
 extern u_char *uct_conf_file;
+extern u_char *uct_log_file;
 
 uct_cycle_t *
 uct_init_cycle(uct_log_t *log)
@@ -44,10 +45,12 @@ uct_init_cycle(uct_log_t *log)
     }
 
     if (cycle->conf_file == NULL) {
-        cycle->conf_file = "conf/umicat.conf";
+        cycle->conf_file = UCT_CONF_PATH;
     }
 
-    cycle->log_file = uct_palloc(cycle->pool, 64);
+    if (cycle->log_file == NULL) {
+        cycle->log_file = uct_pcalloc(cycle->pool, 64);
+    }
 
     cycle->srvs = uct_array_create(pool, 16, sizeof(uct_upstream_srv_t));
     srvs = cycle->srvs;
@@ -55,6 +58,17 @@ uct_init_cycle(uct_log_t *log)
     if (uct_conf_parse(cycle) == UCT_ERROR) {
         return NULL;
     }
+
+    if (cycle->log_file != NULL &&
+        !uct_same_file("umicat.log", (char *)cycle->log_file)) {
+        fclose(cycle->log->file);
+        if (0 != access(dirname(strdup((char *)cycle->log_file)), F_OK))
+            mkdir(dirname(strdup((char *)cycle->log_file)), 0755);
+        uct_copy_file((char *)cycle->log_file, "umicat.log");
+        unlink("umicat.log");
+        cycle->log->file = fopen((char *)cycle->log_file, "a");
+    }
+    uct_log(log, UCT_LOG_INFO, "log file: %s", cycle->log_file);
 
     n = uct_lock_init(&cycle->mutex, 0, 1, log);
     if (n != UCT_OK) {
@@ -82,6 +96,11 @@ uct_conf_parse(uct_cycle_t *cycle)
     stat(cycle->conf_file, &info);
     size = info.st_size;
     conf = fopen(cycle->conf_file, "r");
+    if (conf == NULL) {
+        uct_log(cycle->log, UCT_LOG_FATAL, "open conf file: %s failed",
+            cycle->conf_file);
+        return UCT_ERROR;
+    }
     buf = uct_palloc(cycle->pool, size);
     size = fread(buf, 1, size, conf);
 
@@ -126,8 +145,14 @@ uct_conf_parse(uct_cycle_t *cycle)
             cycle->workers_n = 2;
         }
 
-        item = cJSON_GetObjectItem(root, "log_file")->valuestring;
-        uct_cpystrn(cycle->log_file, (u_char *)item, 64);
+        if (uct_log_file == NULL) {
+            if (cJSON_HasObjectItem(root, "log_file")) {
+                item = cJSON_GetObjectItem(root, "log_file")->valuestring;
+                uct_cpystrn(cycle->log_file, (u_char *)item, 64);
+            } else {
+                cycle->log_file = (u_char *)UCT_LOG_PATH;
+            }
+        }
 
         item = cJSON_GetObjectItem(root, "log_level")->valuestring;
         if (!uct_strcmp(item, "debug")) {
@@ -399,7 +424,8 @@ uct_worker_thread_cycle_udp(void *arg)
             sizeof(servaddr));
         // n = recvfrom(up_conn->fd, buf, UCT_DEFAULT_POOL_SIZE, 0,
         //     NULL, 0);
-        // n = sendto(cycle->listenfd, buf, n, 0, (struct sockaddr *)&clientaddr,
+        // n = sendto(cycle->listenfd, buf, n, 0, (struct sockaddr
+        // *)&clientaddr,
         //     clientlen);
         // if (n == -1) {
         //     uct_log(cycle->log, UCT_LOG_ERROR, "sendto error: %s",
@@ -420,6 +446,12 @@ uct_process_options(uct_cycle_t *cycle)
         cycle->conf_file = (char *)uct_conf_file;
     } else {
         cycle->conf_file = NULL;
+    }
+
+    if (uct_log_file) {
+        cycle->log_file = uct_log_file;
+    } else {
+        cycle->log_file = NULL;
     }
 
     return UCT_OK;

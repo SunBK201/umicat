@@ -56,5 +56,7 @@ uct_write_stdout(char *text)
 #define uct_delete_file(name)    unlink((const char *) name)
 #define uct_delete_file_n        "unlink()"
 
+int uct_copy_file(const char *to, const char *from);
+uct_int_t uct_same_file(const char *filename1, const char *filename2);
 
 #endif /* _UCT_FILE_H_INCLUDED_ */
