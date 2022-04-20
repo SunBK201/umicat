@@ -4,7 +4,7 @@ CFLAGS_DEBUG = -I${DIR_INC} -Wall -O0 -g
 LDLIBS = -pthread
 
 DIR_SRC = src
-DIR_INC = include
+DIR_INC = src
 DIR_OBJ = obj
 
 SRCS = $(wildcard ${DIR_SRC}/*.c)
