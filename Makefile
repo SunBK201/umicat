@@ -39,7 +39,7 @@ uninstall:
 	rm -rf /var/log/umicat
 
 test: debug
-	./umicat -c conf/umicat.conf
+	./umicat -c conf/umicat.conf -l umicat.log
 
 debug: $(SRCS)
 	$(CC) ${CFLAGS_DEBUG} $(LDLIBS) -o $(TARGET) $^

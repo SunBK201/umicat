@@ -14,6 +14,7 @@ static void uct_show_version_info(void);
 static uct_uint_t uct_show_help;
 static uct_uint_t uct_show_version;
 u_char *uct_conf_file;
+u_char *uct_log_file;
 
 int
 main(int argc, char *const *argv)
@@ -116,10 +117,21 @@ uct_get_options(int argc, char *const *argv)
                     goto next;
                 }
                 if (argv[++i]) {
-                    uct_conf_file = (u_char *) argv[i];
+                    uct_conf_file = (u_char *)argv[i];
                     goto next;
                 }
                 printf("umicat: option \"-c\" requires file name\n");
+                return UCT_ERROR;
+            case 'l':
+                if (*p) {
+                    uct_log_file = p;
+                    goto next;
+                }
+                if (argv[++i]) {
+                    uct_log_file = (u_char *)argv[i];
+                    goto next;
+                }
+                printf("umicat: option \"-l\" requires file name\n");
                 return UCT_ERROR;
             default:
                 printf("umicat: invalid option: \"%c\"\n", *(p - 1));
@@ -144,6 +156,8 @@ uct_show_version_info(void)
             "Options:" UCT_LINEFEED "  -?,-h         : this help" UCT_LINEFEED
             "  -v            : show version and exit" UCT_LINEFEED
             "  -c filename   : set configuration file (default: " UCT_CONF_PATH
+            ")" UCT_LINEFEED
+            "  -l filename   : set log file (default: " UCT_LOG_PATH
             ")" UCT_LINEFEED);
     }
 }
