@@ -1,0 +1,12 @@
+[Unit]
+Description=umicat service
+After=network.target
+
+[Service]
+Type=simple
+Restart=no
+RestartSec=5s
+ExecStart=/usr/local/bin/umicat -c /etc/umicat/umicat.conf -l /var/log/umicat/umicat.log
+
+[Install]
+WantedBy=multi-user.target
