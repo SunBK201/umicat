@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 SunBK201
+ * Copyright (C) SunBK201
  */
 
 #ifndef _UCT_SOCKET_H_INCLUDED_

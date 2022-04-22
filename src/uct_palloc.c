@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 SunBK201
+ * Copyright (C) SunBK201
  */
 
 #include <uct_config.h>
