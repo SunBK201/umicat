@@ -186,7 +186,7 @@ uct_epoll_process_events(uct_cycle_t *wk_cycle)
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 continue;
             } else {
-                uct_log(wk_cycle->log, UCT_LOG_INFO,
+                uct_log(wk_cycle->log, UCT_LOG_DEBUG,
                     "Disconnected by client: %s:%s <-> %s:%s",
                     client_conn->ip_text, client_conn->port_text,
                     upstream_conn->ip_text, upstream_conn->port_text);
@@ -225,7 +225,7 @@ uct_epoll_process_events(uct_cycle_t *wk_cycle)
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 continue;
             } else {
-                uct_log(wk_cycle->log, UCT_LOG_INFO,
+                uct_log(wk_cycle->log, UCT_LOG_DEBUG,
                     "Disconnected by upstream: %s:%s <-> %s:%s",
                     client_conn->ip_text, client_conn->port_text,
                     upstream_conn->ip_text, upstream_conn->port_text);

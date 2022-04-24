@@ -38,7 +38,7 @@ uct_upstream_get_connetion(uct_cycle_t *wk_cycle, uct_connection_t *client)
             wk_cycle->master->policy);
         return NULL;
     }
-    uct_log(wk_cycle->log, UCT_LOG_INFO, "get upstream connection: %s:%s",
+    uct_log(wk_cycle->log, UCT_LOG_DEBUG, "get upstream connection: %s:%s",
         conn->ip_text, conn->port_text);
 
     if(wk_cycle->mode == UCT_TCP_MODE)

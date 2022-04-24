@@ -256,7 +256,7 @@ uct_master_thread_cycle(uct_cycle_t *cycle)
             conn->ip_text, UCT_INET_ADDRSTRLEN, conn->port_text,
             UCT_INET_PORTSTRLEN, NI_NUMERICHOST | NI_NUMERICSERV, cycle);
 
-        uct_log(cycle->log, UCT_LOG_INFO, "accepted connection from (%s:%s)",
+        uct_log(cycle->log, UCT_LOG_DEBUG, "accepted connection from (%s:%s)",
             conn->ip_text, conn->port_text);
 
         conn = uct_listening_pool_add(lpool, conn);
@@ -359,6 +359,10 @@ uct_worker_thread_cycle(void *arg)
             proxy_conn->client = cli_conn;
             proxy_conn->upstream = up_conn;
             uct_epoll_add_proxy_connection(wk_cycle, proxy_conn);
+            uct_log(cycle->log, UCT_LOG_INFO,
+                "[THREAD][%x] start proxy %s:%s <-> %s:%s", tid,
+                proxy_conn->client->ip_text, proxy_conn->client->port_text,
+                proxy_conn->upstream->ip_text, proxy_conn->upstream->port_text);
             wk_cycle->connection_n++;
         }
         uct_epoll_process_events(wk_cycle);
