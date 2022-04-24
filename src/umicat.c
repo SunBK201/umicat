@@ -168,6 +168,7 @@ uct_show_version_info(void)
 static void
 uct_show_logo(void)
 {
+    uct_show_version_info();
     printf(" ___  ___  _____ ______   ___  ________  ________  _________   \n");
     printf("|\\  \\|\\  \\|\\   _ \\  _   \\|\\  \\|\\   ____\\|\\   __  "
            "\\|\\___   ___\\ \n");
@@ -182,5 +183,4 @@ uct_show_logo(void)
     printf("    \\|_______|\\|__|     \\|__|\\|__|\\|_______|\\|__|\\|__|    "
            "\\|__|\n");
     printf("\n");
-    uct_show_version_info();
 }
