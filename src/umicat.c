@@ -10,6 +10,7 @@ static uct_int_t uct_check_user();
 static uct_int_t uct_os_init();
 static uct_int_t uct_get_options(int argc, char *const *argv);
 static void uct_show_version_info(void);
+static void uct_show_logo(void);
 
 static uct_uint_t uct_show_help;
 static uct_uint_t uct_show_version;
@@ -26,6 +27,8 @@ main(int argc, char *const *argv)
         uct_write_stderr("umicat: you are not root user\n");
         return 1;
     }
+
+    uct_show_logo();
 
     if (uct_get_options(argc, argv) != UCT_OK) {
         return 1;
@@ -160,4 +163,24 @@ uct_show_version_info(void)
             "  -l filename   : set log file (default: " UCT_LOG_PATH
             ")" UCT_LINEFEED);
     }
+}
+
+static void
+uct_show_logo(void)
+{
+    printf(" ___  ___  _____ ______   ___  ________  ________  _________   \n");
+    printf("|\\  \\|\\  \\|\\   _ \\  _   \\|\\  \\|\\   ____\\|\\   __  "
+           "\\|\\___   ___\\ \n");
+    printf("\\ \\  \\\\\\  \\ \\  \\\\\\__\\ \\  \\ \\  \\ \\  \\___|\\ \\  "
+           "\\|\\  \\|___ \\  \\_| \n");
+    printf(" \\ \\  \\\\\\  \\ \\  \\\\|__| \\  \\ \\  \\ \\  \\    \\ \\   __ "
+           " \\   \\ \\  \\  \n");
+    printf("  \\ \\  \\\\\\  \\ \\  \\    \\ \\  \\ \\  \\ \\  \\____\\ \\  \\ "
+           "\\  \\   \\ \\  \\ \n");
+    printf("   \\ \\_______\\ \\__\\    \\ \\__\\ \\__\\ \\_______\\ \\__\\ "
+           "\\__\\   \\ \\__\\\n");
+    printf("    \\|_______|\\|__|     \\|__|\\|__|\\|_______|\\|__|\\|__|    "
+           "\\|__|\n");
+    printf("\n");
+    uct_show_version_info();
 }
