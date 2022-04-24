@@ -33,10 +33,12 @@ install:
 	cat "conf/umicat.conf" > "/etc/umicat/umicat.conf"
 	test -d '/var/log/umicat' || mkdir -p "/var/log/umicat"
 	cat "systemd/umicat.service" > "/lib/systemd/system/umicat.service"
+	systemctl daemon-reload
 
 uninstall:
 	-systemctl disable --now "umicat.service"
 	rm -f "/lib/systemd/system/umicat.service"
+	systemctl daemon-reload
 	rm -f "$(PREFIX)/bin/umicat"
 	rm -rf "/etc/umicat"
 	rm -rf "/var/log/umicat"
