@@ -28,8 +28,6 @@ main(int argc, char *const *argv)
         return 1;
     }
 
-    uct_show_logo();
-
     if (uct_get_options(argc, argv) != UCT_OK) {
         return 1;
     }
@@ -38,6 +36,8 @@ main(int argc, char *const *argv)
         uct_show_version_info();
         return 0;
     }
+
+    uct_show_logo();
 
     log = malloc(sizeof(uct_log_t));
     if (log == NULL) {
