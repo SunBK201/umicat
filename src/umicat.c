@@ -10,7 +10,7 @@ static uct_int_t uct_check_user();
 static uct_int_t uct_os_init();
 static uct_int_t uct_get_options(int argc, char *const *argv);
 static void uct_show_version_info(void);
-static void uct_show_logo(void);
+static void uct_show_banner(void);
 
 static uct_uint_t uct_show_help;
 static uct_uint_t uct_show_version;
@@ -37,7 +37,7 @@ main(int argc, char *const *argv)
         return 0;
     }
 
-    uct_show_logo();
+    uct_show_banner();
 
     log = malloc(sizeof(uct_log_t));
     if (log == NULL) {
@@ -166,7 +166,7 @@ uct_show_version_info(void)
 }
 
 static void
-uct_show_logo(void)
+uct_show_banner(void)
 {
     uct_show_version_info();
     printf(" ___  ___  _____ ______   ___  ________  ________  _________   \n");
