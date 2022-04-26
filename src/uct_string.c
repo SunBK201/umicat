@@ -391,7 +391,7 @@ uct_filename_cmp(u_char *s1, u_char *s2, size_t n)
     return 0;
 }
 
-/* 字符串转数字 */
+/* string to number */
 uct_int_t
 uct_atoi(u_char *line, size_t n)
 {

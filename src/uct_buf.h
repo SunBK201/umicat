@@ -13,39 +13,39 @@ typedef void *            uct_buf_tag_t;
 typedef struct uct_buf_s  uct_buf_t;
 
 struct uct_buf_s {
-    u_char          *pos;           /* 待处理数据的开始标记 */
-    u_char          *last;          /* 待处理数据的结尾标记 */
-    off_t            file_pos;      /* 处理文件时, 待处理的文件开始标记 */
-    off_t            file_last;     /* 处理文件时, 待处理的文件结尾标记 */
+    u_char          *pos;
+    u_char          *last;
+    off_t            file_pos;
+    off_t            file_last;
 
     u_char          *start;         /* start of buffer */
     u_char          *end;           /* end of buffer */
-    uct_buf_tag_t    tag;           /* 一个void*类型的指针，使用者可以关联任意的对象上去，只要对使用者有意义 */
-    uct_file_t      *file;          /* 引用的文件 */
+    uct_buf_tag_t    tag;
+    uct_file_t      *file;
     uct_buf_t       *shadow;
 
 
     /* the buf's content could be changed */ 
-    unsigned         temporary:1;   /* 标志位，为1时，内存可修改 */
+    unsigned         temporary:1;
 
     /*
      * the buf's content is in a memory cache or in a read only memory
      * and must not be changed
      */
-    unsigned         memory:1;      /* 标志位，为1时，内存只读 */
+    unsigned         memory:1;
 
     /* the buf's content is mmap()ed and must not be changed */
-    unsigned         mmap:1;        /* 标志位，为1时，mmap映射过来的内存，不可修改 */
+    unsigned         mmap:1;
 
-    unsigned         recycled:1;    /* 标志位，为1时，可回收 */
-    unsigned         in_file:1;     /* 标志位，为1时，表示处理的是文件 */
-    unsigned         flush:1;       /* 标志位，为1时，表示需要进行flush操作 */
-    unsigned         sync:1;        /* 标志位，为1时，表示可以进行同步操作，容易引起堵塞 */
-    unsigned         last_buf:1;    /* 标志位，为1时，表示为缓冲区链表uct_chain_t上的最后一块待处理缓冲区 */
-    unsigned         last_in_chain:1;   /* 标志位，为1时，表示为缓冲区链表uct_chain_t上的最后一块缓冲区 */
+    unsigned         recycled:1;
+    unsigned         in_file:1;
+    unsigned         flush:1;
+    unsigned         sync:1;
+    unsigned         last_buf:1;
+    unsigned         last_in_chain:1;
 
-    unsigned         last_shadow:1; /* 标志位，为1时，表示是否是最后一个影子缓冲区 */
-    unsigned         temp_file:1;   /* 标志位，为1时，表示当前缓冲区是否属于临时文件 */
+    unsigned         last_shadow:1;
+    unsigned         temp_file:1;
 
     /* STUB */ int   num;
 };
@@ -104,11 +104,9 @@ typedef struct {
 
 #define UCT_CHAIN_ERROR     (uct_chain_t *) UCT_ERROR
 
-// 返回这个buf里面的内容是否在内存里
 #define uct_buf_in_memory(b)       ((b)->temporary || (b)->memory || (b)->mmap)
 #define uct_buf_in_memory_only(b)  (uct_buf_in_memory(b) && !(b)->in_file)
 
-// 返回该buf是否是一个特殊的buf，只含有特殊的标志和没有包含真正的数据
 #define uct_buf_special(b)                                                   \
     (((b)->flush || (b)->last_buf || (b)->sync)                              \
      && !uct_buf_in_memory(b) && !(b)->in_file)
@@ -117,7 +115,6 @@ typedef struct {
     ((b)->sync && !uct_buf_in_memory(b)                                      \
      && !(b)->in_file && !(b)->flush && !(b)->last_buf)
 
-// 返回该buf所含数据的大小，不管这个数据是在文件里还是在内存里
 #define uct_buf_size(b)                                                      \
     (uct_buf_in_memory(b) ? (off_t) ((b)->last - (b)->pos):                  \
                             ((b)->file_last - (b)->file_pos))
@@ -130,10 +127,6 @@ uct_chain_t *uct_create_chain_of_bufs(uct_pool_t *pool, uct_bufs_t *bufs);
 #define uct_calloc_buf(pool) uct_pcalloc(pool, sizeof(uct_buf_t))
 
 uct_chain_t *uct_alloc_chain_link(uct_pool_t *pool);
-/*
-pool中的chain指向一个uct_chain_t数据，其值是由宏uct_free_chain进行赋予的，
-指向之前用完了的，可以释放的uct_chain_t数据
-*/
 #define uct_free_chain(pool, cl)                                             \
     (cl)->next = (pool)->chain;                                              \
     (pool)->chain = (cl)

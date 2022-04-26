@@ -93,7 +93,7 @@ uct_reset_pool(uct_pool_t *pool)
 
 
 /**
- * 内存池对齐分配一块内存，返回 void 类型指针
+ * uct_pool allocates a block of memory (alignment)
  */
 void *
 uct_palloc(uct_pool_t *pool, size_t size)
@@ -107,7 +107,7 @@ uct_palloc(uct_pool_t *pool, size_t size)
 
 
 /**
- * 内存池非对齐分配一块内存，返回 void 类型指针
+ * uct_pool allocates a block of memory (unaligned)
  */
 void *
 uct_pnalloc(uct_pool_t *pool, size_t size)
@@ -150,8 +150,7 @@ uct_palloc_small(uct_pool_t *pool, size_t size, uct_uint_t align)
 
 
 /**
- * 申请一个新的缓存池 uct_pool_t
- * 新的缓存池会挂载在主缓存池的数据区域 (pool->d->next)
+ * create a new uct_pool_t and mounted in pool->d->next
  */
 static void *
 uct_palloc_block(uct_pool_t *pool, size_t size)
@@ -162,7 +161,6 @@ uct_palloc_block(uct_pool_t *pool, size_t size)
 
     psize = (size_t) (pool->d.end - (u_char *) pool);
 
-    /* 申请新的块 */
     m = uct_memalign(UCT_POOL_ALIGNMENT, psize, pool->log);
     if (m == NULL) {
         return NULL;
@@ -174,21 +172,24 @@ uct_palloc_block(uct_pool_t *pool, size_t size)
     new->d.next = NULL;
     new->d.failed = 0;
 
-    /* 分配size大小的内存块，返回m指针地址 */
     m += sizeof(uct_pool_data_t);
     m = uct_align_ptr(m, UCT_ALIGNMENT);
     new->d.last = m + size;
 
 
-	/**
-	 * 缓存池的 pool 数据结构会挂载子节点的uct_pool_t数据结构
-	 * 子节点的uct_pool_t数据结构中只用到pool->d的结构，只保存数据
-	 * 每添加一个子节点，p->d.failed就会+1，当添加超过4个子节点的时候，
-	 * pool->current会指向到最新的子节点地址
-	 *
-	 * 这个逻辑主要是为了防止pool上的子节点过多，导致每次uct_palloc循环pool->d.next链表
-	 * 将pool->current设置成最新的子节点之后，每次最大循环4次，不会去遍历整个缓存池链表
-	 */
+    /**
+     * The pool data structure of the cache pool will mount the uct_pool_t
+     * data structure of the child nodes The uct_pool_t data structure of
+     * the child nodes will only use the structure of pool->d to save data
+     * only Every time a child node is added, p->d.failed will be +1, and
+     * when more than 4 child nodes are added, pool->current will point to
+     * the latest child node address
+     *
+     * This logic is mainly to prevent too many child nodes on the pool,
+     * resulting in each uct_palloc loop pool->d.next chain after setting
+     * pool->current to the latest child node, each time the maximum loop 4
+     * times, will not go through the entire cache pool chain
+     */
     for (p = pool->current; p->d.next; p = p->d.next) {
         if (p->d.failed++ > 4) {
             pool->current = p->d.next;
@@ -202,7 +203,8 @@ uct_palloc_block(uct_pool_t *pool, size_t size)
 
 
 /**
- * 当分配的内存块大小超出 pool->max 限制的时候, 需要分配在 pool->large 上
+ * When the allocated memory block size exceeds 
+ * the pool->max limit, it needs to be allocated on pool->large
  */
 static void *
 uct_palloc_large(uct_pool_t *pool, size_t size)
@@ -211,7 +213,6 @@ uct_palloc_large(uct_pool_t *pool, size_t size)
     uct_uint_t         n;
     uct_pool_large_t  *large;
 
-    /* 分配一块新的大内存块 */
     p = uct_alloc(size, pool->log);
     if (p == NULL) {
         return NULL;
@@ -219,7 +220,11 @@ uct_palloc_large(uct_pool_t *pool, size_t size)
 
     n = 0;
 
-    /* 去pool->large链表上查询是否有NULL的，只在链表上往下查询3次，主要判断大数据块是否有被释放的，如果没有则只能跳出*/
+    /**
+     * Go to the pool->large chain to query whether there is NULL, only 3
+     * times down the chain, mainly to determine whether the large data
+     * blocks have been released, if not then only jump out.
+     */
     for (large = pool->large; large; large = large->next) {
         if (large->alloc == NULL) {
             large->alloc = p;
@@ -231,7 +236,6 @@ uct_palloc_large(uct_pool_t *pool, size_t size)
         }
     }
 
-    /* 分配一个 uct_pool_large_t 数据结构 */
     large = uct_palloc_small(pool, sizeof(uct_pool_large_t), 1);
     if (large == NULL) {
         uct_free(p);
@@ -247,7 +251,7 @@ uct_palloc_large(uct_pool_t *pool, size_t size)
 
 
 /**
- * 内存块分配在 pool->large 上
+ * memory block is allocated on pool->large
  */
 void *
 uct_pmemalign(uct_pool_t *pool, size_t size, size_t alignment)
@@ -275,14 +279,17 @@ uct_pmemalign(uct_pool_t *pool, size_t size, size_t alignment)
 
 
 /**
- * 大内存块释放 pool->large
+ * free pool->large
  */
 uct_int_t
 uct_pfree(uct_pool_t *pool, void *p)
 {
     uct_pool_large_t  *l;
 
-    /* 在pool->large链上循环搜索，并且只释放内容区域，不释放uct_pool_large_t数据结构 */
+    /**
+     * Loop through the pool->large chain and only release the content
+     * area, not the uct_pool_large_t data structure.
+     */
     for (l = pool->large; l; l = l->next) {
         if (p == l->alloc) {
             uct_log(pool->log, UCT_LOG_DEBUG, "free: %p", l->alloc);
@@ -298,7 +305,7 @@ uct_pfree(uct_pool_t *pool, void *p)
 
 
 /**
- * 内存池对齐分配一块内存，返回 void 类型指针，并初始化清零
+ * uct_pool allocates a block of memory (alignment)(initialize 0)
  */
 void *
 uct_pcalloc(uct_pool_t *pool, size_t size)
@@ -314,19 +321,6 @@ uct_pcalloc(uct_pool_t *pool, size_t size)
 }
 
 
-/**
- * 分配一个可以用于回调函数清理内存块的内存
- * 内存块仍旧在p->d或p->large上
- *
- * uct_pool_t中的cleanup字段管理着一个特殊的链表，该链表的每一项都记录着一个特殊的需要释放的资源。
- * 对于这个链表中每个节点所包含的资源如何去释放，是自说明的。这也就提供了非常大的灵活性。
- * 意味着，uct_pool_t不仅仅可以管理内存，通过这个机制，也可以管理任何需要释放的资源，
- * 例如，关闭文件，或者删除文件等等的。下面我们看一下这个链表每个节点的类型
- *
- * 一般分两种情况：
- * 1. 文件描述符
- * 2. 外部自定义回调函数可以来清理内存
- */
 uct_pool_cleanup_t *
 uct_pool_cleanup_add(uct_pool_t *p, size_t size)
 {
@@ -358,10 +352,6 @@ uct_pool_cleanup_add(uct_pool_t *p, size_t size)
 }
 
 
-/**
- * 清除 p->cleanup 链表上的内存块（主要是文件描述符）
- * 回调函数：uct_pool_cleanup_file
- */
 void
 uct_pool_run_cleanup_file(uct_pool_t *p, uct_fd_t fd)
 {
@@ -383,10 +373,6 @@ uct_pool_run_cleanup_file(uct_pool_t *p, uct_fd_t fd)
 }
 
 
-/**
- * 回调函数: 关闭文件
- * uct_pool_run_cleanup_file 方法执行的时候，用了此函数作为回调函数的，都会被清理
- */
 void
 uct_pool_cleanup_file(void *data)
 {
@@ -401,10 +387,6 @@ uct_pool_cleanup_file(void *data)
 }
 
 
-/**
- * 回调函数: 删除文件
- * uct_pool_run_cleanup_file 方法执行的时候，用了此函数作为回调函数的，都会被清理
- */
 void
 uct_pool_delete_file(void *data)
 {

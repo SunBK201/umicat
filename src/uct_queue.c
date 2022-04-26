@@ -9,10 +9,6 @@
  * find the middle queue element if the queue has odd number of elements
  * or the first element of the queue's second part otherwise
  */
-/*
- * 每次middle向后移动一步，next向后移动两步，
- * 这样next指到队尾的时候，middle就指到了中间，时间复杂度O(N)
- */
 uct_queue_t *
 uct_queue_middle(uct_queue_t *queue)
 {
@@ -45,10 +41,6 @@ uct_queue_middle(uct_queue_t *queue)
 
 
 /* the stable insertion sort */
-/*
- * 使用插入排序算法对queue队列进行排序
- * 完成后在next方向上为升序，prev方向为降序
- */
 void
 uct_queue_sort(uct_queue_t *queue,
     uct_int_t (*cmp)(const uct_queue_t *, const uct_queue_t *))

@@ -21,38 +21,34 @@ typedef void (*uct_pool_cleanup_pt)(void *data);
 
 typedef struct uct_pool_cleanup_s  uct_pool_cleanup_t;
 
-/* 自定义清理回调的数据结构 */
 struct uct_pool_cleanup_s {
-    uct_pool_cleanup_pt   handler;  /* 清理的回调函数 */
-    void                 *data;     /* 指向存储的数据地址 */
-    uct_pool_cleanup_t   *next;     /* 下一个uct_pool_cleanup_t */
+    uct_pool_cleanup_pt   handler;
+    void                 *data;
+    uct_pool_cleanup_t   *next;
 };
 
 typedef struct uct_pool_large_s  uct_pool_large_t;
 
-/* 大数据块结构 */
 struct uct_pool_large_s {
-    uct_pool_large_t     *next;     /* 指向下一个存储地址 通过这个地址可以知道当前块长度 */
-    void                 *alloc;    /* 数据块指针地址 */
+    uct_pool_large_t     *next;
+    void                 *alloc;
 };
 
-/* 数据区域结构 */
 typedef struct {
-    u_char               *last;     /* 内存池中未使用内存的开始节点地址 */
-    u_char               *end;      /* 内存池的结束地址 */
-    uct_pool_t           *next;     /* 指向下一个内存池 */
-    uct_uint_t            failed;   /* 失败次数 */
+    u_char               *last;     /* unused memory */
+    u_char               *end;
+    uct_pool_t           *next;
+    uct_uint_t            failed;
 } uct_pool_data_t;
 
-/* 内存池主结构 */
 struct uct_pool_s {
-    uct_pool_data_t       d;        /* 内存池的数据区域*/
-    size_t                max;      /* 最大每次可分配内存 */
-    uct_pool_t           *current;  /* 指向当前的内存池指针地址。uct_pool_t链表上最后一个缓存池结构 */
-    uct_chain_t          *chain;    /* 缓冲区链表 */
-    uct_pool_large_t     *large;    /* 存储大数据的链表 */
-    uct_pool_cleanup_t   *cleanup;  /* 可自定义回调函数，清除内存块分配的内存 */
-    uct_log_t            *log;      /* 日志 */
+    uct_pool_data_t       d;        /* data area of uct_pool_t */
+    size_t                max;      /* maximum memory available per allocation */
+    uct_pool_t           *current;  /* the current memory pool pointer address */
+    uct_chain_t          *chain;    /* uct_chain_t */
+    uct_pool_large_t     *large;    /* big block memory chain */
+    uct_pool_cleanup_t   *cleanup;  /* custom callback function */
+    uct_log_t            *log;      /* log */
 };
 
 typedef struct {

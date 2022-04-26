@@ -18,12 +18,10 @@ typedef struct {
     uct_str_t   value;
 } uct_keyval_t;
 
-/* 初始化一个字符串 */
+/* initialize uct_str_t */
 #define uct_string(str)     { sizeof(str) - 1, (u_char *) str }
-/* 定义变量时，使用uct_null_string初始化字符串为空字符串 */
 #define uct_null_string     { 0, NULL }
 
-/* 设置一个字符串 */
 #define uct_str_set(str, text)                                               \
     (str)->len = sizeof(text) - 1; (str)->data = (u_char *) text
 #define uct_str_null(str)   (str)->len = 0; (str)->data = NULL

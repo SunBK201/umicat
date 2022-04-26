@@ -39,9 +39,8 @@ typedef unsigned char u_char;
 #define uct_inline inline
 
 /**
- * d 为需要对齐的
- * a 为对齐宽度，必须为 2 的幂
- * 返回对齐值
+ * d is the number of aligned
+ * a is the alignment width and must be a power of 2
  */
 #define uct_align(d, a)     (((d) + (a - 1)) & ~(a - 1))
 #define uct_align_ptr(p, a)                                                   \

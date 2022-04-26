@@ -10,18 +10,18 @@
 typedef struct uct_list_part_s  uct_list_part_t;
 
 struct uct_list_part_s {
-    void             *elts;     /* 节点的内存起始位置 */
-    uct_uint_t        nelts;    /* 表示数组中已经使用了多少个元素, nelts必须小于uct_list_t结构体中的nalloc */
-    uct_list_part_t  *next;     /* 指向下一个链表节点*/
+    void             *elts;     /* uct_list_part_s node */
+    uct_uint_t        nelts;    /* elements in use, nelts < uct_list_t.nalloc */
+    uct_list_part_t  *next;     /* next uct_list_part_s node */
 };
 
 
 typedef struct {
-    uct_list_part_t  *last;     /* 指向最新的链表节点 */
-    uct_list_part_t   part;     /* 第一个链表节点 */
-    size_t            size;     /* 链表默认的元素大小 */
-    uct_uint_t        nalloc;   /* 每个uct_list_part_t数组的容量 */
-    uct_pool_t       *pool;     /* 内存池 */
+    uct_list_part_t  *last;     /* the newest uct_list_t node */
+    uct_list_part_t   part;     /* the first uct_list_t node */
+    size_t            size;     /* default element size */
+    uct_uint_t        nalloc;   /* capacity of each uct_list_part_t */
+    uct_pool_t       *pool;     /* uct_pool_t */
 } uct_list_t;
 
 
