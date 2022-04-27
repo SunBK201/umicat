@@ -2,9 +2,9 @@
 ![umicat logo](docs/umicat_logo.png)
 
 <p align="center">
-<a href="https://github.com/SunBK201/umicat"><img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FSunBK201%2Fumicat&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=umicat&edge_flat=false" target="_blank" /></a>
-<a href="/LICENSE" target="_blank"><img src="https://img.shields.io/badge/license-BSD-green.svg" alt="license" target="_blank" /></a>
-<a href="https://www.linux.org" target="_blank"><img src="https://img.shields.io/badge/platform-linux-lightgrey" /></a>
+<a href="https://github.com/SunBK201/umicat"><img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FSunBK201%2Fumicat&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=umicat&edge_flat=false" /></a>
+<a href="/LICENSE"><img src="https://img.shields.io/badge/license-BSD-green.svg" alt="license" /></a>
+<a href="https://www.linux.org"><img src="https://img.shields.io/badge/platform-linux-lightgrey" /></a>
 </p>
 
 umicat is a L4 reverse proxy load balance server.
