@@ -23,11 +23,6 @@ main(int argc, char *const *argv)
     uct_cycle_t *cycle;
     uct_log_t *log;
 
-    if (uct_check_user() != UCT_OK) {
-        uct_write_stderr("umicat: you are not root user\n");
-        return 1;
-    }
-
     if (uct_get_options(argc, argv) != UCT_OK) {
         return 1;
     }
@@ -35,6 +30,11 @@ main(int argc, char *const *argv)
     if (uct_show_version) {
         uct_show_version_info();
         return 0;
+    }
+
+    if (uct_check_user() != UCT_OK) {
+        uct_write_stderr("umicat: you are not root user\n");
+        return 1;
     }
 
     uct_show_banner();
@@ -150,12 +150,12 @@ uct_get_options(int argc, char *const *argv)
 static void
 uct_show_version_info(void)
 {
-    printf("umicat version: %s\n", UMICAT_VERSION);
+    printf("umicat version: umicat/%s\n", UMICAT_VERSION);
     printf("built on: %s %s\n", __DATE__, __TIME__);
 
     if (uct_show_help) {
         uct_write_stderr(
-            "Usage: umicat [-?hv] [-c filename] " UCT_LINEFEED
+            "Usage: umicat [-?hv] [-c filename] [-l filename]" UCT_LINEFEED
             "Options:" UCT_LINEFEED "  -?,-h         : this help" UCT_LINEFEED
             "  -v            : show version and exit" UCT_LINEFEED
             "  -c filename   : set configuration file (default: " UCT_CONF_PATH
