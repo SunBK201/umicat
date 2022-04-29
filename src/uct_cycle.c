@@ -426,15 +426,15 @@ uct_worker_thread_cycle_udp(void *arg)
         servaddr.sin_port = htons(atoi(up_conn->port_text));
         n = sendto(up_conn->fd, buf, n, 0, (struct sockaddr *)&servaddr,
             sizeof(servaddr));
-        // n = recvfrom(up_conn->fd, buf, UCT_DEFAULT_POOL_SIZE, 0,
-        //     NULL, 0);
-        // n = sendto(cycle->listenfd, buf, n, 0, (struct sockaddr
-        // *)&clientaddr,
-        //     clientlen);
-        // if (n == -1) {
-        //     uct_log(cycle->log, UCT_LOG_ERROR, "sendto error: %s",
-        //         strerror(errno));
-        // }
+        n = recvfrom(up_conn->fd, buf, UCT_DEFAULT_POOL_SIZE, 0,
+            NULL, 0);
+        n = sendto(cycle->listenfd, buf, n, 0, (struct sockaddr
+        *)&clientaddr,
+            clientlen);
+        if (n == -1) {
+            uct_log(cycle->log, UCT_LOG_ERROR, "sendto error: %s",
+                strerror(errno));
+        }
         uct_close_socket(up_conn->fd);
         uct_destroy_pool(up_conn->pool);
         uct_destroy_pool(cli_conn->pool);
