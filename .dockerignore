@@ -1,0 +1,7 @@
+.git
+*.o
+*.out
+*.log
+umicat
+/obj
+/.vscode

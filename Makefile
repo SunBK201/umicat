@@ -14,7 +14,7 @@ INCS = $(wildcard $(DIR_INC)/*.h)
 OBJS = $(patsubst %.c, ${DIR_OBJ}/%.o, $(notdir ${SRCS}))
 TARGET = umicat
 
-.PHONY: all clean install uninstall test debug
+.PHONY: all clean install uninstall test debug run install-docker
 
 all: $(TARGET)
 
@@ -42,6 +42,15 @@ uninstall:
 	rm -f "$(PREFIX)/bin/umicat"
 	rm -rf "/etc/umicat"
 	rm -rf "/var/log/umicat"
+
+install-docker:
+	install -Dm755 "umicat" "$(PREFIX)/bin/umicat"
+	test -d '/etc/umicat' || mkdir -p "/etc/umicat"
+	cat "conf/umicat.conf" > "/etc/umicat/umicat.conf"
+	test -d '/var/log/umicat' || mkdir -p "/var/log/umicat"
+
+run: all
+	./umicat -c conf/umicat.conf -l umicat.log
 
 test: debug
 	./umicat -c conf/umicat.conf -l umicat.log
