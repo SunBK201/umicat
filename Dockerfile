@@ -9,7 +9,4 @@ RUN apt install -y procps
 RUN apt install -y gcc
 RUN apt install -y make
 
-
-RUN mkdir /umicat
-ADD ./umicat /umicat
-
+COPY . /umicat
