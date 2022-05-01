@@ -14,6 +14,6 @@ COPY . /umicat
 RUN cd /umicat && make && make install-docker
 RUN rm -rf /umicat
 
-RUN apt uninstall wget vim procps make gcc
+RUN apt purge wget vim procps make gcc
 
 CMD umicat -c /etc/umicat/umicat.conf -l /var/log/umicat.log
