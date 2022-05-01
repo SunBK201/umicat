@@ -416,10 +416,16 @@ uct_worker_thread_cycle_udp(void *arg)
             cli_conn->ip_text, UCT_INET_ADDRSTRLEN, cli_conn->port_text,
             UCT_INET_PORTSTRLEN, NI_NUMERICHOST | NI_NUMERICSERV, cycle);
 
-        uct_log(cycle->log, UCT_LOG_INFO, "accepted udp packet from (%s:%s)",
+        uct_log(cycle->log, UCT_LOG_DEBUG, "accepted udp packet from (%s:%s)",
             cli_conn->ip_text, cli_conn->port_text);
 
         up_conn = uct_upstream_get_connetion(wk_cycle, cli_conn);
+
+        uct_log(cycle->log, UCT_LOG_INFO,
+            "[THREAD][%x] start proxy %s:%s <-> %s:%s", tid,
+            cli_conn->ip_text, cli_conn->port_text, up_conn->ip_text,
+            up_conn->port_text);
+
         bzero(&servaddr, sizeof(servaddr));
         servaddr.sin_family = AF_INET;
         inet_pton(AF_INET, up_conn->ip_text, &servaddr.sin_addr);
