@@ -4,3 +4,7 @@
 umicat
 /obj
 /.vscode
+/conf/ip_hash.conf
+/conf/rr-1.conf
+/conf/rr-2.conf
+/conf/test.conf

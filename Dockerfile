@@ -10,3 +10,7 @@ RUN apt install -y gcc
 RUN apt install -y make
 
 COPY . /umicat
+
+RUN cd /umicat
+RUN make && make install-docker
+RUN cd .. && rm -rf /umicat
