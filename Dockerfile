@@ -14,4 +14,4 @@ COPY . /umicat
 RUN cd /umicat && make && make install-docker
 RUN rm -rf /umicat
 
-CMD umicat -c /umicat/umicat.conf -l /var/log/umicat.log
+CMD umicat -c /etc/umicat/umicat.conf -l /var/log/umicat.log
