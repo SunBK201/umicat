@@ -2,12 +2,12 @@ FROM ubuntu:20.04
 
 RUN apt update
 
-RUN apt install -y vim wget procps gcc make
+RUN apt install -y vim gcc make
 
 COPY . /umicat
 
 RUN cd /umicat && make && make install-docker
-RUN rm -rf /umicat
+RUN rm -rf /umicat && rm -rf /tmp/* && rm -rf /var/cache/*
 
 RUN apt purge -y make gcc
 
