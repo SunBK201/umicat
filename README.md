@@ -50,3 +50,8 @@ Then, you can enjoy it:
 ```bash
 sudo umicat
 ```
+
+# Docker
+```bash
+docker image pull docker.io/sunbk201/umicat:latest
+```
