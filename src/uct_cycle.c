@@ -133,10 +133,13 @@ uct_conf_parse(uct_cycle_t *cycle)
         item = cJSON_GetObjectItem(root, "policy")->valuestring;
         if (!uct_strcmp(item, "round_robin")) {
             cycle->policy = UCT_ROUND_ROBIN;
+            uct_log(cycle->log, UCT_LOG_INFO, "umicat policy: round_robin");
         } else if (!uct_strcmp(item, "ip_hash")) {
             cycle->policy = UCT_IP_HASH;
+            uct_log(cycle->log, UCT_LOG_INFO, "umicat policy: ip_hash");
         } else if (!uct_strcmp(item, "least_conn")) {
             cycle->policy = UCT_LEAST_CONN;
+            uct_log(cycle->log, UCT_LOG_INFO, "umicat policy: least_conn");
         } else {
             uct_log(cycle->log, UCT_ERROR, "unknown policy: %s", item);
             return UCT_ERROR;
