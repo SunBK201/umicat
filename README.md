@@ -48,7 +48,7 @@ Please configure `/etc/umicat/umicat.conf` before you start using it:
 
 Then, you can enjoy it:
 ```bash
-sudo umicat
+sudo umicat -c /etc/umicat/umicat.conf -l /var/log/umicat/umicat.log
 ```
 
 # Docker
