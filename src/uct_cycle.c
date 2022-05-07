@@ -112,10 +112,13 @@ uct_conf_parse(uct_cycle_t *cycle)
         item = cJSON_GetObjectItem(root, "mode")->valuestring;
         if (!uct_strcmp(item, "tcp")) {
             cycle->mode = UCT_TCP_MODE;
+            uct_log(cycle->log, UCT_LOG_INFO, "umicat mode: tcp");
         } else if (!uct_strcmp(item, "udp")) {
             cycle->mode = UCT_UDP_MODE;
+            uct_log(cycle->log, UCT_LOG_INFO, "umicat mode: udp");
         } else if (!uct_strcmp(item, "http")) {
             cycle->mode = UCT_HTTP_MODE;
+            uct_log(cycle->log, UCT_LOG_INFO, "umicat mode: http");
         } else {
             uct_log(cycle->log, UCT_ERROR, "unknown mode: %s", item);
             return UCT_ERROR;
