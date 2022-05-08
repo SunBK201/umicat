@@ -38,5 +38,5 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./release.tar.gz
-        asset_name: umicat-release-${{ steps.get_version.outputs.VERSION }}.tar.gz
+        asset_name: umicat-${{ steps.get_version.outputs.VERSION }}.tar.gz
         asset_content_type: application/gzip
