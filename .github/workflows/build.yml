@@ -19,6 +19,7 @@ jobs:
     - run: tar czf release.tar.gz umicat conf systemd docs LICENSE README.md
 
     - name: Release
+      id: create_release
       uses: actions/create-release@master
       env:
         GITHUB_TOKEN: ${{ secrets.TOKEN }}
