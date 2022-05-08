@@ -20,6 +20,8 @@ jobs:
 
     - name: Release
       uses: actions/create-release@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
       with:
         tag_name: ${{ github.ref }}
         release_name: Release ${{ github.ref }}
@@ -28,6 +30,8 @@ jobs:
     
     - name: Upload Release Asset
       uses: actions/upload-release-asset@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         assets_path: ./release.tar.gz
