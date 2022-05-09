@@ -8,6 +8,7 @@
 </p>
 
 umicat is a L4 reverse proxy load balance server.
+umicat can provide load balancing service for TCP/UDP network services in the form of reverse proxy.
 
 # Build and Install
 ```bash
@@ -19,7 +20,7 @@ sudo make install
 
 ## Load Balance Policy
 - `round_robin`: Round-robin load balance policy.
-- `ip_hash`: IP hash load balance policy.
+- `ip_hash`: IP-hash load balance policy.
 - `least_conn`: Least-connection load balance policy.
 
 Please configure `/etc/umicat/umicat.conf` before you start using it:
