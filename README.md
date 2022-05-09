@@ -56,3 +56,6 @@ sudo umicat -c /etc/umicat/umicat.conf -l /var/log/umicat/umicat.log
 ```bash
 docker image pull docker.io/sunbk201/umicat:latest
 ```
+
+# License
+[BSD-2 License](./LICENSE)
