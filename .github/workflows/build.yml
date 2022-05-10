@@ -9,33 +9,33 @@ jobs:
   build_and_release:
     runs-on: ubuntu-20.04
     steps:
-    - name: Get Version
-      id: get_version
-      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+      - name: Get Version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
 
-    - name: Build
-    - uses: actions/checkout@v3
-      run: |
-        make
-        tar czf release.tar.gz umicat conf systemd docs LICENSE README.md
+      - name: Build
+      - uses: actions/checkout@v3
+        run: |
+          make
+          tar czf release.tar.gz umicat conf systemd docs LICENSE README.md
 
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@master
-      env:
-        GITHUB_TOKEN: ${{ secrets.TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: umicat ${{ steps.get_version.outputs.VERSION }}
-        draft: false
-        prerelease: false
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: umicat ${{ steps.get_version.outputs.VERSION }}
+          draft: false
+          prerelease: false
     
-    - name: Upload Release
-      uses: actions/upload-release-asset@master
-      env:
-        GITHUB_TOKEN: ${{ secrets.TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./release.tar.gz
-        asset_name: umicat-${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz
-        asset_content_type: application/gzip
+      - name: Upload Release
+        uses: actions/upload-release-asset@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release.tar.gz
+          asset_name: umicat-${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz
+          asset_content_type: application/gzip
