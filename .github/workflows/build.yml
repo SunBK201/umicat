@@ -9,12 +9,13 @@ jobs:
   build_and_release:
     runs-on: ubuntu-20.04
     steps:
+      - uses: actions/checkout@v3
+
       - name: Get Version
         id: get_version
         run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
 
       - name: Build
-      - uses: actions/checkout@v3
         run: |
           make
           tar czf release.tar.gz umicat conf systemd docs LICENSE README.md
