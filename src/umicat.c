@@ -80,7 +80,7 @@ uct_os_init()
 {
     uct_uint_t n;
 
-    uct_pagesize = getpagesize();
+    uct_pagesize       = getpagesize();
     uct_cacheline_size = UCT_CPU_CACHE_LINE;
 
     for (n = uct_pagesize; n >>= 1; uct_pagesize_shift++) {
@@ -109,7 +109,7 @@ uct_get_options(int argc, char *const *argv)
             case '?':
             case 'h':
                 uct_show_version = 1;
-                uct_show_help = 1;
+                uct_show_help    = 1;
                 break;
             case 'v':
                 uct_show_version = 1;
@@ -156,10 +156,11 @@ uct_show_version_info(void)
     if (uct_show_help) {
         uct_write_stderr(
             "Usage: umicat [-?hv] [-c filename] [-l filename]" UCT_LINEFEED
-            "Options:" UCT_LINEFEED "  -?,-h         : this help" UCT_LINEFEED
+            "Options:" UCT_LINEFEED
+            "  -?,-h         : this help" UCT_LINEFEED
             "  -v            : show version and exit" UCT_LINEFEED
-            "  -c filename   : set configuration file (default: " UCT_CONF_PATH
-            ")" UCT_LINEFEED
+            "  -c filename   : set configuration file "
+            "(default: " UCT_CONF_PATH ")" UCT_LINEFEED
             "  -l filename   : set log file (default: " UCT_LOG_PATH
             ")" UCT_LINEFEED);
     }
@@ -169,18 +170,19 @@ static void
 uct_show_banner(void)
 {
     uct_show_version_info();
-    printf(" ___  ___  _____ ______   ___  ________  ________  _________   \n");
-    printf("|\\  \\|\\  \\|\\   _ \\  _   \\|\\  \\|\\   ____\\|\\   __  "
-           "\\|\\___   ___\\ \n");
-    printf("\\ \\  \\\\\\  \\ \\  \\\\\\__\\ \\  \\ \\  \\ \\  \\___|\\ \\  "
-           "\\|\\  \\|___ \\  \\_| \n");
-    printf(" \\ \\  \\\\\\  \\ \\  \\\\|__| \\  \\ \\  \\ \\  \\    \\ \\   __ "
-           " \\   \\ \\  \\  \n");
-    printf("  \\ \\  \\\\\\  \\ \\  \\    \\ \\  \\ \\  \\ \\  \\____\\ \\  \\ "
-           "\\  \\   \\ \\  \\ \n");
-    printf("   \\ \\_______\\ \\__\\    \\ \\__\\ \\__\\ \\_______\\ \\__\\ "
-           "\\__\\   \\ \\__\\\n");
-    printf("    \\|_______|\\|__|     \\|__|\\|__|\\|_______|\\|__|\\|__|    "
-           "\\|__|\n");
+    printf(
+        " ___  ___  _____ ______   ___  ________  ________  __________   \n"
+        "|\\  \\|\\  \\|\\   _ \\  _   \\|\\  \\|\\   ____\\|\\   __  "
+        "\\|\\___   ___\\ \n"
+        "\\ \\  \\\\\\  \\ \\  \\\\\\__\\ \\  \\ \\  \\ \\  \\___|\\ \\  "
+        "\\|\\  \\|___ \\  \\_| \n"
+        " \\ \\  \\\\\\  \\ \\  \\\\|__| \\  \\ \\  \\ \\  \\    \\ \\   "
+        "__  \\   \\ \\  \\  \n"
+        "  \\ \\  \\\\\\  \\ \\  \\    \\ \\  \\ \\  \\ \\  \\____\\ \\  "
+        "\\ \\  \\   \\ \\  \\ \n"
+        "   \\ \\_______\\ \\__\\    \\ \\__\\ \\__\\ \\_______\\ \\__\\ "
+        "\\__\\   \\ \\__\\\n"
+        "    \\|_______|\\|__|     \\|__|\\|__|\\|_______|\\|__|\\|__|    "
+        "\\|__|\n");
     printf("\n");
 }
