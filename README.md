@@ -41,7 +41,7 @@ Please configure `/etc/umicat/umicat.conf` before you start using it:
             "weight": 2
         }
     ],
-    "workers": 2,
+    "workers": "auto",
     "log_level": "info",
     "log_file": "/var/log/umicat/umicat.log"
 }
