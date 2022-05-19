@@ -16,6 +16,7 @@ static uct_uint_t uct_show_help;
 static uct_uint_t uct_show_version;
 u_char *uct_conf_file;
 u_char *uct_log_file;
+uct_uint_t uct_corenum;
 
 int
 main(int argc, char *const *argv)
@@ -82,6 +83,8 @@ uct_os_init()
 
     uct_pagesize       = getpagesize();
     uct_cacheline_size = UCT_CPU_CACHE_LINE;
+
+    uct_corenum = sysconf(_SC_NPROCESSORS_ONLN);
 
     for (n = uct_pagesize; n >>= 1; uct_pagesize_shift++) {
         /* void */

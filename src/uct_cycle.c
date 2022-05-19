@@ -15,6 +15,7 @@ extern uct_array_t *srvs;
 extern uct_uint_t srvs_n;
 extern u_char *uct_conf_file;
 extern u_char *uct_log_file;
+extern uct_uint_t uct_corenum;
 
 uct_cycle_t *
 uct_init_cycle(uct_log_t *log)
@@ -145,10 +146,20 @@ uct_conf_parse(uct_cycle_t *cycle)
             return UCT_ERROR;
         }
 
-        if ((n = cJSON_GetObjectItem(root, "workers")->valueint) > 0) {
-            cycle->workers_n = cJSON_GetObjectItem(root, "workers")->valueint;
+        if (cJSON_GetObjectItem(root, "workers")->type == cJSON_String) {
+            if (!uct_strcmp(cJSON_GetObjectItem(root, "workers")->valuestring,
+                    "auto")) {
+                cycle->workers_n = uct_corenum;
+            } else {
+                cycle->workers_n =
+                    atoi(cJSON_GetObjectItem(root, "workers")->valuestring);
+            }
+        } else if ((n = cJSON_GetObjectItem(root, "workers")->valueint) >
+                   0) {
+            cycle->workers_n =
+                cJSON_GetObjectItem(root, "workers")->valueint;
         } else {
-            cycle->workers_n = 2;
+            cycle->workers_n = uct_corenum;
         }
 
         if (uct_log_file == NULL) {
@@ -297,13 +308,17 @@ uct_start_worker_threads(uct_cycle_t *cycle, uct_int_t n)
 {
     uct_int_t i;
     pthread_t tid;
+    struct uct_thread_args_s *args;
 
     uct_log(cycle->log, UCT_LOG_NOTICE, "start worker threads");
 
     if (cycle->mode == UCT_TCP_MODE) {
         for (i = 0; i < n; i++) {
+            args = uct_palloc(cycle->pool, sizeof(struct uct_thread_args_s));
+            args->cycle = cycle;
+            args->id = i;
             if (uct_pthread_create(&tid, NULL, uct_worker_thread_cycle,
-                    (void *)cycle)) {
+                    (void *)args)) {
                 uct_log(cycle->log, UCT_LOG_ERROR,
                     "create thread worker failed");
             }
@@ -323,6 +338,7 @@ static void *
 uct_worker_thread_cycle(void *arg)
 {
     pthread_t tid;
+    struct uct_thread_args_s *args;
     uct_cycle_t *cycle;
     uct_cycle_t *wk_cycle;
     uct_pool_t *pool;
@@ -330,12 +346,25 @@ uct_worker_thread_cycle(void *arg)
     uct_connection_t *cli_conn;
     uct_connection_t *up_conn;
     uct_proxy_t *proxy_conn;
+    cpu_set_t mask;
 
     tid = uct_pthread_self();
     uct_pthread_detach(tid);
 
-    cycle = (uct_cycle_t *)arg;
+    args = (struct uct_thread_args_s *)arg;
+    cycle = args->cycle;
     lpool = cycle->lpool;
+
+    if (cycle->workers_n == uct_corenum) {
+        CPU_ZERO(&mask);
+        CPU_SET(args->id, &mask);
+        if (pthread_setaffinity_np(tid, sizeof(cpu_set_t), &mask) !=
+            UCT_OK) {
+            uct_log(cycle->log, UCT_LOG_ERROR, "set cpu affinity failed");
+        } else {
+            uct_log(cycle->log, UCT_LOG_INFO, "set cpu affinity success");
+        }
+    }
 
     pool = uct_create_pool(UCT_DEFAULT_POOL_SIZE, cycle->log);
     wk_cycle = uct_palloc(pool, sizeof(uct_cycle_t));
@@ -346,6 +375,8 @@ uct_worker_thread_cycle(void *arg)
     // proxy_conn = uct_palloc(wk_cycle->pool, sizeof(uct_proxy_t));
     // uct_queue_init(&proxy_conn->queue);
     // wk_cycle->proxy_conn = proxy_conn;
+
+
 
     if (uct_epoll_init(wk_cycle) != UCT_OK) {
         return NULL;

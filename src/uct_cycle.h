@@ -42,6 +42,11 @@ struct uct_cycle_s {
     sem_t mutex;
 };
 
+struct uct_thread_args_s {
+    uct_cycle_t *cycle;
+    uct_uint_t id;
+};
+
 uct_cycle_t *uct_init_cycle(uct_log_t *log);
 void uct_master_thread_cycle(uct_cycle_t *cycle);
 void uct_master_thread_cycle_udp(uct_cycle_t *cycle);
