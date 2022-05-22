@@ -22,6 +22,7 @@ sudo make install
 - `round_robin`: Round-robin load balance policy.
 - `ip_hash`: IP-hash load balance policy.
 - `least_conn`: Least-connection load balance policy.
+- `random`: Random load balance policy.
 
 Please configure `/etc/umicat/umicat.conf` before you start using it:
 ```bash

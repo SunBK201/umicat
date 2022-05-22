@@ -141,6 +141,9 @@ uct_conf_parse(uct_cycle_t *cycle)
         } else if (!uct_strcmp(item, "least_conn")) {
             cycle->policy = UCT_LEAST_CONN;
             uct_log(cycle->log, UCT_LOG_INFO, "umicat policy: least_conn");
+        } else if (!uct_strcmp(item, "random")) {
+            cycle->policy = UCT_RANDOM;
+            uct_log(cycle->log, UCT_LOG_INFO, "umicat policy: random");
         } else {
             uct_log(cycle->log, UCT_ERROR, "unknown policy: %s", item);
             return UCT_ERROR;
@@ -362,7 +365,7 @@ uct_worker_thread_cycle(void *arg)
             UCT_OK) {
             uct_log(cycle->log, UCT_LOG_ERROR, "set cpu affinity failed");
         } else {
-            uct_log(cycle->log, UCT_LOG_INFO, "set cpu affinity success");
+            uct_log(cycle->log, UCT_LOG_DEBUG, "set cpu affinity success");
         }
     }
 

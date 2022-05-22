@@ -11,6 +11,7 @@
 #define UCT_ROUND_ROBIN 0
 #define UCT_IP_HASH     1
 #define UCT_LEAST_CONN  2
+#define UCT_RANDOM      3
 
 struct uct_upstream_srv_s {
     char *upstream_ip;

@@ -17,6 +17,8 @@ static uct_uint_t uct_upstream_least_conn_get(uct_array_t *srvs, uct_uint_t n,
     sem_t *mutex, uct_log_t *log);
 static uct_connection_t *uct_upstream_least_conn_get_conn(
     uct_cycle_t *wk_cycle);
+static uct_uint_t uct_upstream_random_get(uct_array_t *srvs, uct_uint_t n);
+static uct_connection_t * uct_upstream_random_get_conn(uct_cycle_t *wk_cycle);
 static uct_inline uct_int_t power(uct_int_t i, uct_int_t j);
 
 uct_array_t *srvs;
@@ -33,6 +35,8 @@ uct_upstream_get_connetion(uct_cycle_t *wk_cycle, uct_connection_t *client)
         conn = uct_upstream_ip_hash_get_conn(wk_cycle, client);
     } else if (wk_cycle->master->policy == UCT_LEAST_CONN) {
         conn = uct_upstream_least_conn_get_conn(wk_cycle);
+    } else if (wk_cycle->master->policy == UCT_RANDOM) {
+        conn = uct_upstream_random_get_conn(wk_cycle);
     } else {
         uct_log(wk_cycle->log, UCT_LOG_ERROR, "upstream mode error, mode: %d",
             wk_cycle->master->policy);
@@ -241,6 +245,81 @@ uct_upstream_least_conn_get_conn(uct_cycle_t *wk_cycle)
     uct_itoa(srv->upstream_port, upstream_port, 10);
 
     fd = uct_open_clientfd(srv->upstream_ip, upstream_port, wk_cycle);
+    if (fd <= 0) {
+        uct_log(wk_cycle->log, UCT_LOG_ERROR,
+            "open upstream connection error, ip: %s, port: %s",
+            srv->upstream_ip, upstream_port);
+        return NULL;
+    }
+
+    conn = uct_connection_init(wk_cycle, fd);
+    conn->ip_text = srv->upstream_ip;
+    conn->port_text = uct_itoa(srv->upstream_port, upstream_port, 10);
+    conn->upstream_srv = srv;
+
+    return conn;
+}
+
+static uct_uint_t 
+uct_upstream_random_get(uct_array_t *srvs, uct_uint_t n)
+{
+    uct_int_t total_weight;
+    uct_uint_t i;
+    uct_upstream_srv_t *srv;
+    uct_int_t best;
+    uct_int_t randnum;
+    struct timespec seed;
+
+    best = 0;
+    total_weight = 0;
+    srv = srvs->elts;
+
+    for (i = 0; i < n; i++) {
+        total_weight += srv[i].weight;
+    }
+
+    clock_gettime(CLOCK_REALTIME, &seed);
+    srand(seed.tv_sec + seed.tv_nsec);
+    randnum = rand() % total_weight;
+
+    for (i = 0; i < n; i++) {
+        if (randnum < srv[i].weight) {
+            best = i;
+            break;
+        }
+        randnum -= srv[i].weight;
+    }
+
+    return best;
+}
+
+static uct_connection_t * 
+uct_upstream_random_get_conn(uct_cycle_t *wk_cycle)
+{
+    uct_socket_t fd;
+    uct_connection_t *conn;
+    uct_cycle_t *cycle;
+    uct_upstream_srv_t *srv;
+    char *upstream_port;
+    uct_uint_t best;
+
+    cycle = wk_cycle->master;
+    best = uct_upstream_random_get(cycle->srvs, cycle->srvs_n);
+    srv = (uct_upstream_srv_t *)uct_array_loc(cycle->srvs, best);
+
+    upstream_port = uct_pnalloc(wk_cycle->pool, UCT_INET_PORTSTRLEN);
+    uct_itoa(srv->upstream_port, upstream_port, 10);
+
+    if (wk_cycle->mode == UCT_TCP_MODE) {
+        fd = uct_open_clientfd(srv->upstream_ip, upstream_port, wk_cycle);
+    } else if (wk_cycle->mode == UCT_UDP_MODE) {
+        fd = uct_open_clientfd_udp(srv->upstream_ip, upstream_port, wk_cycle);
+    } else {
+        uct_log(wk_cycle->log, UCT_LOG_ERROR, "upstream mode error, mode: %d",
+            wk_cycle->mode);
+        return NULL;
+    }
+
     if (fd <= 0) {
         uct_log(wk_cycle->log, UCT_LOG_ERROR,
             "open upstream connection error, ip: %s, port: %s",

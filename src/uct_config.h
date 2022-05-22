@@ -28,6 +28,7 @@
 #include <semaphore.h>
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
+#include <sys/timeb.h>
 #include <libgen.h>
 
 #define _XOPEN_SOURCE_EXTENDED 1
