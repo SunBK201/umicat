@@ -11,6 +11,7 @@ static uct_int_t uct_os_init();
 static uct_int_t uct_get_options(int argc, char *const *argv);
 static void uct_show_version_info(void);
 static void uct_show_banner(void);
+static void signal_handler();
 
 static uct_uint_t uct_show_help;
 static uct_uint_t uct_show_version;
@@ -39,6 +40,9 @@ main(int argc, char *const *argv)
     }
 
     uct_show_banner();
+
+    signal(SIGTERM, signal_handler);
+    signal(SIGINT, signal_handler);
 
     log = malloc(sizeof(uct_log_t));
     if (log == NULL) {
@@ -188,4 +192,9 @@ uct_show_banner(void)
         "    \\|_______|\\|__|     \\|__|\\|__|\\|_______|\\|__|\\|__|    "
         "\\|__|\n");
     printf("\n");
+}
+
+static void signal_handler()
+{
+    exit(0);
 }

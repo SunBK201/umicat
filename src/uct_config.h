@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <signal.h>
 #include <pthread.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
