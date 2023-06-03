@@ -1,11 +1,11 @@
-FROM gcc AS buildStage
+FROM gcc AS builder
 COPY . /umicat
-RUN cd /umicat && make
+WORKDIR /umicat
+RUN make
 
 FROM ubuntu:22.04
-COPY --from=buildStage /umicat .
-
-RUN install -Dm755 "umicat" "usr/local/bin/umicat" \
+COPY --from=builder /umicat .
+RUN install -Dm755 "umicat" "/usr/local/bin/umicat" \
     && mkdir -p "/etc/umicat" \
     && cat "conf/umicat.conf" > "/etc/umicat/umicat.conf" \
     && mkdir -p "/var/log/umicat"
