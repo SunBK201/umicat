@@ -55,7 +55,7 @@ sudo umicat -c /etc/umicat/umicat.conf -l /var/log/umicat/umicat.log
 
 # Docker
 ```bash
-docker image pull docker.io/sunbk201/umicat:latest
+docker run -P -it --rm sunbk201/umicat
 ```
 
 # License
