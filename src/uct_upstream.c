@@ -134,7 +134,7 @@ power(uct_int_t x, uct_int_t n)
 {
     if (n == 0)
         return 1;
-    int res = power(x, n / 2);
+    uct_int_t res = power(x, n / 2);
     if (n % 2 != 0)
         return res * res * x;
     else
