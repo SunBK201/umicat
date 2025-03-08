@@ -42,6 +42,9 @@ uct_upstream_get_connetion(uct_cycle_t *wk_cycle, uct_connection_t *client)
             wk_cycle->master->policy);
         return NULL;
     }
+    if (conn == NULL) {
+        return NULL;
+    }
     uct_log(wk_cycle->log, UCT_LOG_DEBUG, "get upstream connection: %s:%s",
         conn->ip_text, conn->port_text);
 
@@ -50,6 +53,76 @@ uct_upstream_get_connetion(uct_cycle_t *wk_cycle, uct_connection_t *client)
 
     return conn;
 }
+
+
+uct_int_t
+uct_upstream_connect(uct_upstream_srv_t *srv, uct_cycle_t *cycle) {
+    uct_socket_t fd;
+    time_t now;
+    char *upstream_port;
+
+    upstream_port = uct_pnalloc(cycle->pool, UCT_INET_PORTSTRLEN);
+    uct_itoa(srv->upstream_port, upstream_port, 10);
+    if (cycle->mode == UCT_TCP_MODE) {
+        fd = uct_open_clientfd(srv->upstream_ip, upstream_port, cycle);
+    } else if (cycle->mode == UCT_UDP_MODE) {
+        fd = uct_open_clientfd_udp(srv->upstream_ip, upstream_port, cycle);
+    } else {
+        uct_log(cycle->log, UCT_LOG_ERROR, "upstream mode error, mode: %d",
+            cycle->mode);
+        return -1;
+    }
+    if (fd <= 0) {
+        uct_log(cycle->log, UCT_LOG_ERROR,
+            "open upstream connection error, ip: %s, port: %d",
+            srv->upstream_ip, srv->upstream_port);
+            
+        if (pthread_spin_lock(&srv->lock) != UCT_OK) {
+            return -1;
+        }
+        if (srv->max_fails) {
+            srv->effective_weight -= srv->weight / srv->max_fails;
+        }
+        if (srv->effective_weight < 0) {
+            srv->effective_weight = 0;
+        }
+        
+        now = time(NULL);
+        if (now - srv->last_fail_time > srv->fail_timeout) {
+            srv->last_fail_time = now;
+            srv->fails = 1;
+        } else {
+            srv->fails++;
+        }
+        if (srv->fails && srv->fails >= srv->max_fails && now - srv->last_fail_time <= srv->fail_timeout) {
+            srv->is_down = true;
+            srv->effective_weight = 0;
+            srv->last_fail_time = now;
+            uct_log(cycle->log, UCT_LOG_ERROR,
+                "upstream server %s:%d temporarily down", srv->upstream_ip, srv->upstream_port);
+        }
+
+        pthread_spin_unlock(&srv->lock);
+        return -1;
+    } else {
+        if (pthread_spin_lock(&srv->lock) != UCT_OK) {
+            return -1;
+        }
+        if (srv->is_down) {
+            srv->is_down = false;
+            srv->fails = 0;
+            uct_log(cycle->log, UCT_LOG_INFO,
+                "upstream server %s:%d up", srv->upstream_ip, srv->upstream_port);
+        }
+        if (srv->effective_weight < srv->weight) {
+            srv->effective_weight++;
+        }
+        srv->connection_n++;
+        pthread_spin_unlock(&srv->lock);
+    }
+    return fd;
+}
+
 
 static uct_uint_t
 uct_upstream_round_robin_get(uct_array_t *srvs, uct_uint_t n, sem_t *mutex,
@@ -60,6 +133,7 @@ uct_upstream_round_robin_get(uct_array_t *srvs, uct_uint_t n, sem_t *mutex,
     uct_upstream_srv_t *srv;
     uct_int_t best;
     uct_int_t max;
+    time_t now;
 
     best = 0;
     max = 0;
@@ -67,19 +141,28 @@ uct_upstream_round_robin_get(uct_array_t *srvs, uct_uint_t n, sem_t *mutex,
     srv = srvs->elts;
 
     uct_lock_p(mutex, log);
+    now = time(NULL);
     for (i = 0; i < n; i++) {
+        if (srv[i].is_down && srv[i].is_fallback && now - srv[i].last_fail_time < srv[i].fail_timeout) {
+            continue;
+        }
+        if (now - srv[i].last_fail_time > srv[i].fail_timeout && srv[i].is_down && srv[i].effective_weight == 0) {
+            srv[i].effective_weight += 1;
+        }
         total_weight += srv[i].effective_weight;
         srv[i].current_weight += srv[i].effective_weight;
     }
 
     for (i = 0; i < n; i++) {
+        if (srv[i].is_down && srv[i].is_fallback && now - srv[i].last_fail_time < srv[i].fail_timeout) {
+            continue;
+        }
         if (srv[i].current_weight > max) {
             max = srv[i].current_weight;
             best = i;
         }
     }
     srv[best].current_weight -= total_weight;
-    srv[best].connection_n++;
 
     uct_lock_v(mutex, log);
 
@@ -104,20 +187,8 @@ uct_upstream_round_robin_get_conn(uct_cycle_t *wk_cycle)
     upstream_port = uct_pnalloc(wk_cycle->pool, UCT_INET_PORTSTRLEN);
     uct_itoa(srv->upstream_port, upstream_port, 10);
 
-    if (wk_cycle->mode == UCT_TCP_MODE) {
-        fd = uct_open_clientfd(srv->upstream_ip, upstream_port, wk_cycle);
-    } else if (wk_cycle->mode == UCT_UDP_MODE) {
-        fd = uct_open_clientfd_udp(srv->upstream_ip, upstream_port, wk_cycle);
-    } else {
-        uct_log(wk_cycle->log, UCT_LOG_ERROR, "upstream mode error, mode: %d",
-            wk_cycle->mode);
-        return NULL;
-    }
-
+    fd = uct_upstream_connect(srv, wk_cycle);
     if (fd <= 0) {
-        uct_log(wk_cycle->log, UCT_LOG_ERROR,
-            "open upstream connection error, ip: %s, port: %s",
-            srv->upstream_ip, upstream_port);
         return NULL;
     }
 
@@ -155,12 +226,7 @@ uct_upstream_ip_hash_get(uct_array_t *srvs, uct_uint_t n, sem_t *mutex,
     for (i = 0; i < len; i++) {
         hash = hash + client->ip_text[0] * power(13, i);
     }
-
     best = hash % n;
-
-    uct_lock_p(mutex, log);
-    ((uct_upstream_srv_t *)uct_array_loc(srvs, best))->connection_n++;
-    uct_lock_v(mutex, log);
 
     return best;
 }
@@ -183,11 +249,8 @@ uct_upstream_ip_hash_get_conn(uct_cycle_t *wk_cycle, uct_connection_t *client)
     upstream_port = uct_pnalloc(wk_cycle->pool, UCT_INET_PORTSTRLEN);
     uct_itoa(srv->upstream_port, upstream_port, 10);
 
-    fd = uct_open_clientfd(srv->upstream_ip, upstream_port, wk_cycle);
+    fd = uct_upstream_connect(srv, wk_cycle);
     if (fd <= 0) {
-        uct_log(wk_cycle->log, UCT_LOG_ERROR,
-            "open upstream connection error, ip: %s, port: %s",
-            srv->upstream_ip, upstream_port);
         return NULL;
     }
 
@@ -207,14 +270,19 @@ uct_upstream_least_conn_get(uct_array_t *srvs, uct_uint_t n, sem_t *mutex,
     uct_uint_t best;
     uct_int_t min;
     uct_upstream_srv_t *srv;
+    time_t now;
 
     best = 0;
     srv = srvs->elts;
-    min = srv[0].connection_n;
 
     uct_lock_p(mutex, log);
 
+    min = UCT_MAX_INT_T_VALUE;
+    now = time(NULL);
     for (i = 0; i < n; i++) {
+        if (srv[i].is_down && srv[i].is_fallback && now - srv[i].last_fail_time < srv[i].fail_timeout) {
+            continue;
+        }
         if (srv[i].connection_n < min) {
             min = srv[i].connection_n;
             best = i;
@@ -244,11 +312,8 @@ uct_upstream_least_conn_get_conn(uct_cycle_t *wk_cycle)
     upstream_port = uct_pnalloc(wk_cycle->pool, UCT_INET_PORTSTRLEN);
     uct_itoa(srv->upstream_port, upstream_port, 10);
 
-    fd = uct_open_clientfd(srv->upstream_ip, upstream_port, wk_cycle);
+    fd = uct_upstream_connect(srv, wk_cycle);
     if (fd <= 0) {
-        uct_log(wk_cycle->log, UCT_LOG_ERROR,
-            "open upstream connection error, ip: %s, port: %s",
-            srv->upstream_ip, upstream_port);
         return NULL;
     }
 
@@ -269,25 +334,37 @@ uct_upstream_random_get(uct_array_t *srvs, uct_uint_t n)
     uct_int_t best;
     uct_int_t randnum;
     struct timespec seed;
+    time_t now;
 
     best = 0;
     total_weight = 0;
     srv = srvs->elts;
 
+    now = time(NULL);
     for (i = 0; i < n; i++) {
-        total_weight += srv[i].weight;
+        if (srv[i].is_down && srv[i].is_fallback && now - srv[i].last_fail_time < srv[i].fail_timeout) {
+            continue;
+        }
+        if (now - srv[i].last_fail_time > srv[i].fail_timeout && srv[i].is_down && srv[i].effective_weight == 0) {
+            srv[i].effective_weight += 1;
+        }
+        total_weight += srv[i].effective_weight;
     }
 
     clock_gettime(CLOCK_REALTIME, &seed);
     srand(seed.tv_sec + seed.tv_nsec);
     randnum = rand() % total_weight;
 
+    now = time(NULL);
     for (i = 0; i < n; i++) {
-        if (randnum < srv[i].weight) {
+        if (srv[i].is_down && srv[i].is_fallback && now - srv[i].last_fail_time < srv[i].fail_timeout) {
+            continue;
+        }
+        if (randnum < srv[i].effective_weight) {
             best = i;
             break;
         }
-        randnum -= srv[i].weight;
+        randnum -= srv[i].effective_weight;
     }
 
     return best;
@@ -310,20 +387,8 @@ uct_upstream_random_get_conn(uct_cycle_t *wk_cycle)
     upstream_port = uct_pnalloc(wk_cycle->pool, UCT_INET_PORTSTRLEN);
     uct_itoa(srv->upstream_port, upstream_port, 10);
 
-    if (wk_cycle->mode == UCT_TCP_MODE) {
-        fd = uct_open_clientfd(srv->upstream_ip, upstream_port, wk_cycle);
-    } else if (wk_cycle->mode == UCT_UDP_MODE) {
-        fd = uct_open_clientfd_udp(srv->upstream_ip, upstream_port, wk_cycle);
-    } else {
-        uct_log(wk_cycle->log, UCT_LOG_ERROR, "upstream mode error, mode: %d",
-            wk_cycle->mode);
-        return NULL;
-    }
-
+    fd = uct_upstream_connect(srv, wk_cycle);
     if (fd <= 0) {
-        uct_log(wk_cycle->log, UCT_LOG_ERROR,
-            "open upstream connection error, ip: %s, port: %s",
-            srv->upstream_ip, upstream_port);
         return NULL;
     }
 

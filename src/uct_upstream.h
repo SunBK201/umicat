@@ -20,6 +20,13 @@ struct uct_upstream_srv_s {
     uct_int_t current_weight;
     uct_int_t effective_weight;
     uct_uint_t connection_n;
+    uct_uint_t fails;
+    uct_uint_t max_fails;
+    uct_uint_t fail_timeout;
+    uct_uint_t last_fail_time;
+    bool is_down;
+    bool is_fallback;
+    pthread_spinlock_t lock;
 };
 
 uct_connection_t *uct_upstream_get_connetion(uct_cycle_t *wk_cycle,

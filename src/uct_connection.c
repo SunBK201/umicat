@@ -192,9 +192,9 @@ uct_epoll_process_events(uct_cycle_t *wk_cycle)
                     upstream_conn->ip_text, upstream_conn->port_text);
                 uct_close_socket(client_conn->fd);
                 uct_close_socket(upstream_conn->fd);
-                uct_lock_p(&wk_cycle->master->mutex, wk_cycle->log);
+                pthread_spin_lock(&upstream_conn->upstream_srv->lock);
                 upstream_conn->upstream_srv->connection_n--;
-                uct_lock_v(&wk_cycle->master->mutex, wk_cycle->log);
+                pthread_spin_unlock(&upstream_conn->upstream_srv->lock);
                 epoll_ctl(wk_cycle->client_epoll, EPOLL_CTL_DEL,
                     client_conn->fd, NULL);
                 epoll_ctl(wk_cycle->upstream_epoll, EPOLL_CTL_DEL,
@@ -231,9 +231,9 @@ uct_epoll_process_events(uct_cycle_t *wk_cycle)
                     upstream_conn->ip_text, upstream_conn->port_text);
                 uct_close_socket(upstream_conn->fd);
                 uct_close_socket(client_conn->fd);
-                uct_lock_p(&wk_cycle->master->mutex, wk_cycle->log);
+                pthread_spin_lock(&upstream_conn->upstream_srv->lock);
                 upstream_conn->upstream_srv->connection_n--;
-                uct_lock_v(&wk_cycle->master->mutex, wk_cycle->log);
+                pthread_spin_unlock(&upstream_conn->upstream_srv->lock);
                 epoll_ctl(wk_cycle->upstream_epoll, EPOLL_CTL_DEL,
                     upstream_conn->fd, NULL);
                 epoll_ctl(wk_cycle->client_epoll, EPOLL_CTL_DEL,

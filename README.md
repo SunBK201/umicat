@@ -25,7 +25,7 @@ sudo make install
 - `random`: Random load balance policy.
 
 Please configure `/etc/umicat/umicat.conf` before you start using it:
-```bash
+```json
 {
     "mode": "tcp",
     "localport": 10201,
@@ -33,13 +33,19 @@ Please configure `/etc/umicat/umicat.conf` before you start using it:
     "upstream": [
         {
             "upstream_ip": "127.0.0.1",
-            "upstream_port": 80,
-            "weight": 2
+            "upstream_port": 9832,
+            "weight": 10,
+            "max_fails": 2,
+            "fail_timeout": 10,
+            "is_fallback": 1
         },
         {
             "upstream_ip": "127.0.0.1",
-            "upstream_port": 81,
-            "weight": 2
+            "upstream_port": 9999,
+            "weight": 10,
+            "max_fails": 2,
+            "fail_timeout": 10,
+            "is_fallback": 1
         }
     ],
     "workers": "auto",

@@ -210,9 +210,16 @@ uct_conf_parse(uct_cycle_t *cycle)
                     cJSON_GetObjectItem(uit, "upstream_port")->valueint;
 
                 srv->weight = cJSON_GetObjectItem(uit, "weight")->valueint;
+                srv->max_fails = cJSON_GetObjectItem(uit, "max_fails")->valueint;
+                srv->fail_timeout = cJSON_GetObjectItem(uit, "fail_timeout")->valueint;
+                srv->is_fallback = cJSON_GetObjectItem(uit, "is_fallback")->valueint;
+                srv->last_fail_time = 0;
+                srv->fails = 0;
+                srv->is_down = false;
                 srv->effective_weight = srv->weight;
                 srv->current_weight = 0;
                 srv->connection_n = 0;
+                pthread_spin_init(&srv->lock, 1);
                 uct_log(cycle->log, UCT_LOG_INFO,
                     "upstream server %s:%d, weight=%d", srv->upstream_ip,
                     srv->upstream_port, srv->weight);
@@ -395,6 +402,13 @@ uct_worker_thread_cycle(void *arg)
                 cli_conn->fd);
 
             up_conn = uct_upstream_get_connetion(wk_cycle, cli_conn);
+            if (up_conn == NULL) {
+                uct_log(cycle->log, UCT_LOG_ERROR,
+                    "get upstream connection failed, client addr: %s:%s", cli_conn->ip_text, cli_conn->port_text);
+                uct_close_file(cli_conn->fd);
+                uct_destroy_pool(cli_conn->pool);
+                continue;
+            }
             proxy_conn = uct_pnalloc(up_conn->pool, sizeof(uct_proxy_t));
             proxy_conn->client = cli_conn;
             proxy_conn->upstream = up_conn;
