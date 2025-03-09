@@ -6,30 +6,6 @@
 #include <uct_core.h>
 
 static uct_int_t
-create_connection_timer(uct_upstream_srv_t *srv, uct_cycle_t *cycle) {
-    uct_int_t timerfd;
-    struct itimerspec its;
-
-    timerfd = timerfd_create(CLOCK_MONOTONIC, 0);
-    if (timerfd < 0) {
-        uct_log(cycle->log, UCT_LOG_ERROR, "timerfd_create error: %s",
-            strerror(errno));
-        return UCT_ERROR;
-    }
-    its.it_value.tv_sec = srv->check_timeout;
-    its.it_value.tv_nsec = 0;
-    its.it_interval.tv_sec = 0;
-    its.it_interval.tv_nsec = 0;
-
-    if (timerfd_settime(timerfd, 0, &its, NULL) < 0) {
-        uct_log(cycle->log, UCT_LOG_ERROR, "timerfd_settime error: %s",
-            strerror(errno));
-        return UCT_ERROR;
-    }
-    return timerfd;
-}
-
-static uct_int_t
 init_srv_timer(uct_upstream_srv_t *srv, uct_cycle_t *cycle) {
     struct itimerspec its;
 
@@ -101,7 +77,6 @@ uct_check_tcp(char *hostname, uct_uint_t port, uct_cycle_t *cycle) {
             return UCT_CHECK_TCP_DISCONNECTED;
         }
     }
-    uct_close_socket(clientfd);
     return UCT_CHECK_TCP_DISCONNECTED;
 }
 
@@ -162,7 +137,12 @@ uct_check_tcp_cycle(uct_cycle_t *cycle) {
             srv = check_data->srv;
             if (check_data->srv->timerfd == check_data->fd) {
                 // check timer event
-                read(check_data->fd, &expirations, sizeof(expirations));
+                int readn = read(check_data->fd, &expirations, sizeof(expirations));
+                if (readn < 0) {
+                    uct_log(cycle->log, UCT_LOG_ERROR, "read timerfd error: %s",
+                        strerror(errno));
+                    return;
+                }
                 uct_log(cycle->log, UCT_LOG_DEBUG, "check tcp server: %s:%d",
                     srv->upstream_ip, srv->upstream_port);
                 int ret = uct_check_tcp(srv->upstream_ip, srv->upstream_port, cycle);
@@ -262,9 +242,5 @@ uct_checker_thread_cycle(void *arg) {
 
     args = (struct uct_thread_args_s *)arg;
     cycle = args->cycle;
-    uct_upstream_srv_t *srv;
-    srv = (uct_upstream_srv_t *)uct_array_loc(cycle->srvs, 0);
-    uct_log(cycle->log, UCT_LOG_INFO, "checker thread start %d", srv->check_interval);
-    
     uct_check_tcp_cycle(cycle);
 }
