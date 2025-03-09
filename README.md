@@ -18,12 +18,30 @@ sudo make install
 
 # Usage
 
+## Health Check
+### Passive Check
+- `max_fails`: passive health check max fails, if the number of fails exceeds this value, the server will be considered as down. 
+- `fail_timeout`: passive health check fail timeout. If the server is down, after this time, the server will be tried again.
+- `is_fallback`: If the server is down, whether to fallback to the next server.
+### Aggressive Check
+- `type`: health check type.
+- `port`: Health check port.
+- `interval`: Health check interval.
+- `timeout`: Health check timeout.
+- `fall`: The number of consecutive failures to consider a server as down.
+- `rise`: The number of consecutive successes to consider a server as up.
+
+
 ## Load Balance Policy
 - `round_robin`: Round-robin load balance policy.
-- `ip_hash`: IP-hash load balance policy.
-- `least_conn`: Least-connection load balance policy.
+    - `weight`: Weight of the server.
 - `random`: Random load balance policy.
+    - `weight`: Weight of the server.
+- `ip_hash`: IP-hash load balance policy.
+    - `weight`: Weight of the server.
+- `least_conn`: Least-connection load balance policy.
 - `heuristic`: Heuristic traffic load balance policy.
+    - `traffic_window`: Traffic window size. (seconds)
 
 Please configure `/etc/umicat/umicat.conf` before you start using it:
 ```json
