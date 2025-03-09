@@ -21,6 +21,6 @@ struct uct_check_data {
     uct_uint_t start_time;
 };
 
-void uct_checker_thread_cycle(void *arg);
+void * uct_checker_thread_cycle(void *arg);
 
 #endif /* _UCT_CHECK_H_INCLUDED_ */

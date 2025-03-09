@@ -235,7 +235,7 @@ uct_check_tcp_cycle(uct_cycle_t *cycle) {
 
 }
 
-void
+void *
 uct_checker_thread_cycle(void *arg) {
     struct uct_thread_args_s *args;
     uct_cycle_t *cycle;
@@ -243,4 +243,5 @@ uct_checker_thread_cycle(void *arg) {
     args = (struct uct_thread_args_s *)arg;
     cycle = args->cycle;
     uct_check_tcp_cycle(cycle);
+    return NULL;
 }

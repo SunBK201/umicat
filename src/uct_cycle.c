@@ -64,7 +64,6 @@ uct_init_cycle(uct_log_t *log)
     cycle->upstream_srvs = uct_pcalloc(pool, sizeof(uct_upstream_srvs_t));
     cycle->upstream_srvs->srvs = cycle->srvs;
     cycle->upstream_srvs->number = cycle->srvs_n;
-    cycle->upstream_srvs->lock = pthread_spin_init(&cycle->upstream_srvs->lock, 1);
     if (cycle->policy == UCT_IP_HASH) {
         uct_upstream_init_hash_ring(cycle->upstream_srvs, cycle);
     }
@@ -123,6 +122,8 @@ uct_conf_parse_upstream(uct_cycle_t *cycle, cJSON *root)
         srv->max_fails = cJSON_GetObjectItem(uit, "max_fails")->valueint;
         srv->fail_timeout = cJSON_GetObjectItem(uit, "fail_timeout")->valueint;
         srv->is_fallback = cJSON_GetObjectItem(uit, "is_fallback")->valueint;
+        srv->traffic_window = cJSON_GetObjectItem(uit, "traffic_window")->valueint;
+        srv->traffic = 0;
         srv->last_fail_time = 0;
         srv->fails = 0;
         srv->is_down = false;
@@ -233,6 +234,9 @@ uct_conf_parse(uct_cycle_t *cycle)
         } else if (!uct_strcmp(item, "random")) {
             cycle->policy = UCT_RANDOM;
             uct_log(cycle->log, UCT_LOG_INFO, "umicat policy: random");
+        } else if (!uct_strcmp(item, "heuristic")) {
+            cycle->policy = UCT_HEURISTIC;
+            uct_log(cycle->log, UCT_LOG_INFO, "umicat policy: heuristic");
         } else {
             uct_log(cycle->log, UCT_ERROR, "unknown policy: %s", item);
             return UCT_ERROR;
