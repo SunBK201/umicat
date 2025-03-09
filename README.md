@@ -37,7 +37,15 @@ Please configure `/etc/umicat/umicat.conf` before you start using it:
             "weight": 10,
             "max_fails": 2,
             "fail_timeout": 10,
-            "is_fallback": 1
+            "is_fallback": 1,
+            "check": {
+                "type": "tcp",
+                "port": 9832,
+                "interval": 5,
+                "timeout": 5,
+                "fall": 3,
+                "rise": 2
+            }
         },
         {
             "upstream_ip": "127.0.0.1",
@@ -45,7 +53,15 @@ Please configure `/etc/umicat/umicat.conf` before you start using it:
             "weight": 10,
             "max_fails": 2,
             "fail_timeout": 10,
-            "is_fallback": 1
+            "is_fallback": 1,
+            "check": {
+                "type": "tcp",
+                "port": 9999,
+                "interval": 15,
+                "timeout": 5,
+                "fall": 3,
+                "rise": 2
+            }
         }
     ],
     "workers": "auto",

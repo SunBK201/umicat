@@ -5,6 +5,7 @@
 #include <uct_config.h>
 #include <uct_core.h>
 
+static void uct_start_checker_thread(uct_cycle_t *cycle);
 static void uct_start_worker_threads(uct_cycle_t *cycle, uct_int_t n);
 static void *uct_worker_thread_cycle(void *cycle);
 static void *uct_worker_thread_cycle_udp(void *cycle);
@@ -79,15 +80,95 @@ uct_init_cycle(uct_log_t *log)
     return cycle;
 }
 
+static void
+uct_conf_parse_upstream(uct_cycle_t *cycle, cJSON *root)
+{
+    uct_upstream_srv_t *srv;
+    cJSON *upstream;
+    cJSON *check;
+    cJSON *uit;
+    size_t i;
+    char *item;
+
+    upstream = cJSON_GetObjectItem(root, "upstream");
+    if (!upstream) {
+        uct_log(cycle->log, UCT_LOG_ERROR, "upstream not found");
+        return;
+    }
+    for (i = 0;; i++) {
+        uit = cJSON_GetArrayItem(upstream, i);
+        if (!uit) {
+            break;
+        }
+        srv = uct_array_push(cycle->srvs);
+
+        item = cJSON_GetObjectItem(uit, "upstream_ip")->valuestring;
+        srv->upstream_ip =
+            uct_pnalloc(cycle->pool, UCT_INET_ADDRSTRLEN * 4);
+        uct_cpystrn((u_char *)srv->upstream_ip, (u_char *)item,
+            UCT_INET_ADDRSTRLEN * 4);
+
+        srv->upstream_port =
+            cJSON_GetObjectItem(uit, "upstream_port")->valueint;
+
+        srv->weight = cJSON_GetObjectItem(uit, "weight")->valueint;
+        srv->max_fails = cJSON_GetObjectItem(uit, "max_fails")->valueint;
+        srv->fail_timeout = cJSON_GetObjectItem(uit, "fail_timeout")->valueint;
+        srv->is_fallback = cJSON_GetObjectItem(uit, "is_fallback")->valueint;
+        srv->last_fail_time = 0;
+        srv->fails = 0;
+        srv->is_down = false;
+        srv->effective_weight = srv->weight;
+        srv->current_weight = 0;
+        srv->connection_n = 0;
+
+        check = cJSON_GetObjectItem(uit, "check");
+        if (check) {
+            char *check_type = cJSON_GetObjectItem(check, "type")->valuestring;
+            if (!uct_strcmp(check_type, "tcp")) {
+                srv->check_type = UCT_CHECK_MODE_TCP;
+            } else if (!uct_strcmp(check_type, "udp")) {
+                srv->check_type = UCT_CHECK_MODE_UDP;
+            } else if (!uct_strcmp(check_type, "http")) {
+                srv->check_type = UCT_CHECK_MODE_HTTP;
+            } else if (!uct_strcmp(check_type, "ping")) {
+                srv->check_type = UCT_CHECK_MODE_PING;
+            } else if (!uct_strcmp(check_type, "tls")) {
+                srv->check_type = UCT_CHECK_MODE_TLS;
+            } else if (!uct_strcmp(check_type, "ssh")) {
+                srv->check_type = UCT_CHECK_MODE_SSH;
+            } else {
+                srv->check_type = UCT_CHECK_MODE_TCP;
+            }
+            srv->check_port = cJSON_GetObjectItem(check, "port")->valueint;
+            srv->check_interval = cJSON_GetObjectItem(check, "interval")->valueint;
+            srv->check_timeout = cJSON_GetObjectItem(check, "timeout")->valueint;
+            srv->check_fall = cJSON_GetObjectItem(check, "fall")->valueint;
+            srv->check_rise = cJSON_GetObjectItem(check, "rise")->valueint;
+        } else {
+            srv->check_type = 0;
+            srv->check_port = 0;
+            srv->check_interval = 0;
+            srv->check_timeout = 0;
+            srv->check_fall = 0;
+            srv->check_rise = 0;
+        }
+
+        pthread_spin_init(&srv->lock, 1);
+        uct_log(cycle->log, UCT_LOG_INFO,
+            "upstream server %s:%d, weight=%d", srv->upstream_ip,
+            srv->upstream_port, srv->weight);
+    }
+    cycle->srvs_n = i;
+    srvs_n = i;
+    uct_log(cycle->log, UCT_LOG_NOTICE, "upstream server: %d", cycle->srvs_n);
+}
+
 static uct_int_t
 uct_conf_parse(uct_cycle_t *cycle)
 {
     cJSON *root;
-    cJSON *upstream;
-    cJSON *uit;
     char *item;
-    uct_upstream_srv_t *srv;
-    size_t i;
     FILE *conf;
     char *buf;
     uct_file_info_t info;
@@ -191,44 +272,7 @@ uct_conf_parse(uct_cycle_t *cycle)
             uct_log_set_level(cycle->log, UCT_LOG_INFO);
         }
 
-        upstream = cJSON_GetObjectItem(root, "upstream");
-        if (upstream) {
-            for (i = 0;; i++) {
-                uit = cJSON_GetArrayItem(upstream, i);
-                if (!uit) {
-                    break;
-                }
-                srv = uct_array_push(cycle->srvs);
-
-                item = cJSON_GetObjectItem(uit, "upstream_ip")->valuestring;
-                srv->upstream_ip =
-                    uct_pnalloc(cycle->pool, UCT_INET_ADDRSTRLEN * 4);
-                uct_cpystrn((u_char *)srv->upstream_ip, (u_char *)item,
-                    UCT_INET_ADDRSTRLEN * 4);
-
-                srv->upstream_port =
-                    cJSON_GetObjectItem(uit, "upstream_port")->valueint;
-
-                srv->weight = cJSON_GetObjectItem(uit, "weight")->valueint;
-                srv->max_fails = cJSON_GetObjectItem(uit, "max_fails")->valueint;
-                srv->fail_timeout = cJSON_GetObjectItem(uit, "fail_timeout")->valueint;
-                srv->is_fallback = cJSON_GetObjectItem(uit, "is_fallback")->valueint;
-                srv->last_fail_time = 0;
-                srv->fails = 0;
-                srv->is_down = false;
-                srv->effective_weight = srv->weight;
-                srv->current_weight = 0;
-                srv->connection_n = 0;
-                pthread_spin_init(&srv->lock, 1);
-                uct_log(cycle->log, UCT_LOG_INFO,
-                    "upstream server %s:%d, weight=%d", srv->upstream_ip,
-                    srv->upstream_port, srv->weight);
-            }
-            cycle->srvs_n = i;
-            srvs_n = i;
-            uct_log(cycle->log, UCT_LOG_NOTICE, "upstream server: %d",
-                cycle->srvs_n);
-        }
+        uct_conf_parse_upstream(cycle, root);
     }
 
     cJSON_Delete(root);
@@ -267,6 +311,7 @@ uct_master_thread_cycle(uct_cycle_t *cycle)
 
     uct_log(cycle->log, UCT_LOG_INFO, "start listen: %d", cycle->localport);
 
+    uct_start_checker_thread(cycle);
     uct_start_worker_threads(cycle, cycle->workers_n);
 
     while (1) {
@@ -311,6 +356,20 @@ uct_master_thread_cycle_udp(uct_cycle_t *cycle)
         /* null */
     }
     uct_close_socket(listenfd);
+}
+
+static void
+uct_start_checker_thread(uct_cycle_t *cycle)
+{
+    pthread_t tid;
+    struct uct_thread_args_s *args;
+
+    args = uct_palloc(cycle->pool, sizeof(struct uct_thread_args_s));
+    args->cycle = cycle;
+    if (uct_pthread_create(&tid, NULL, uct_checker_thread_cycle,
+            (void *)args)) {
+        uct_log(cycle->log, UCT_LOG_ERROR, "create thread checker failed");
+    }
 }
 
 static void

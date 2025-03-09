@@ -31,6 +31,7 @@
 #include <sys/ioctl.h>
 #include <sys/timeb.h>
 #include <libgen.h>
+#include <sys/timerfd.h>
 
 #define _XOPEN_SOURCE_EXTENDED 1
 

@@ -35,6 +35,7 @@ typedef struct uct_proxy_s uct_proxy_t;
 #include <uct_connection.h>
 #include <uct_cycle.h>
 #include <uct_upstream.h>
+#include <uct_check.h>
 
 // #define UCT_DEBUG
 
