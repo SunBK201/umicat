@@ -40,7 +40,26 @@ struct uct_upstream_srv_s {
     uct_int_t timerfd;
 };
 
+typedef struct {
+    uct_uint_t hash;
+    uct_upstream_srv_t *srv;
+} uct_upstream_ring_point_t;
+
+typedef struct 
+{
+    uct_uint_t number;
+    uct_array_t *points; // uct_upstream_chash_point_t
+} uct_upstream_hash_ring_t;
+
+struct uct_upstream_srvs_s{
+    uct_uint_t number;
+    uct_array_t *srvs; // uct_upstream_srv_t    
+    uct_upstream_hash_ring_t *ring;
+    uct_uint_t lock;
+};
+
 uct_connection_t *uct_upstream_get_connetion(uct_cycle_t *wk_cycle,
     uct_connection_t *client);
+void uct_upstream_init_hash_ring(uct_upstream_srvs_t *srvs, uct_cycle_t *cycle);
 
 #endif /* _UCT_UPSTREAM_H_INCLUDED_ */

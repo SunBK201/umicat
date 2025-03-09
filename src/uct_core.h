@@ -16,11 +16,13 @@ typedef struct uct_connection_s uct_connection_t;
 typedef struct uct_log_s uct_log_t;
 typedef struct uct_logev_s uct_logev_t;
 typedef struct uct_upstream_srv_s uct_upstream_srv_t;
+typedef struct uct_upstream_srvs_s uct_upstream_srvs_t;
 typedef struct uct_proxy_s uct_proxy_t;
 
 
 #include <umicat.h>
 #include <uct_json.h>
+#include <uct_md5.h>
 #include <uct_log.h>
 #include <uct_string.h>
 #include <uct_file.h>

@@ -61,6 +61,14 @@ uct_init_cycle(uct_log_t *log)
         return NULL;
     }
 
+    cycle->upstream_srvs = uct_pcalloc(pool, sizeof(uct_upstream_srvs_t));
+    cycle->upstream_srvs->srvs = cycle->srvs;
+    cycle->upstream_srvs->number = cycle->srvs_n;
+    cycle->upstream_srvs->lock = pthread_spin_init(&cycle->upstream_srvs->lock, 1);
+    if (cycle->policy == UCT_IP_HASH) {
+        uct_upstream_init_hash_ring(cycle->upstream_srvs, cycle);
+    }
+
     if (cycle->log_file != NULL &&
         !uct_same_file("umicat.log", (char *)cycle->log_file)) {
         fclose(cycle->log->file);

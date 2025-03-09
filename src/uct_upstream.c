@@ -9,8 +9,6 @@ static uct_uint_t uct_upstream_round_robin_get(uct_array_t *srvs, uct_uint_t n,
     sem_t *mutex, uct_log_t *log);
 static uct_connection_t *uct_upstream_round_robin_get_conn(
     uct_cycle_t *wk_cycle);
-static uct_uint_t uct_upstream_ip_hash_get(uct_array_t *srvs, uct_uint_t n,
-    sem_t *mutex, uct_log_t *log, uct_connection_t *client);
 static uct_connection_t *uct_upstream_ip_hash_get_conn(uct_cycle_t *wk_cycle,
     uct_connection_t *client);
 static uct_uint_t uct_upstream_least_conn_get(uct_array_t *srvs, uct_uint_t n,
@@ -212,23 +210,132 @@ power(uct_int_t x, uct_int_t n)
         return res * res;
 }
 
-static uct_uint_t
-uct_upstream_ip_hash_get(uct_array_t *srvs, uct_uint_t n, sem_t *mutex,
-    uct_log_t *log, uct_connection_t *client)
+void 
+uct_upstream_init_hash_ring(uct_upstream_srvs_t *srvs, uct_cycle_t *cycle)
 {
-    uct_int_t hash;
-    uct_int_t best;
-    uct_int_t i;
-    uct_int_t len;
-
-    len = uct_strlen(client->ip_text);
-    hash = 0;
-    for (i = 0; i < len; i++) {
-        hash = hash + client->ip_text[0] * power(13, i);
+    uct_uint_t i, j;
+    uct_upstream_srv_t *srv;
+    uct_upstream_ring_point_t *point;
+    uct_uint_t npoints;
+    
+    srvs->ring = uct_palloc(cycle->pool, sizeof(uct_upstream_hash_ring_t));
+    srvs->ring->number = 0;
+    srvs->ring->points = uct_array_create(cycle->pool, 160, sizeof(uct_upstream_ring_point_t));
+    char *hash_key = uct_calloc(UCT_INET6_ADDRSTRLEN + 10, cycle->log);
+    for (uct_uint_t i = 0; i < srvs->number; i++)
+    {
+        srv = (uct_upstream_srv_t *)uct_array_loc(srvs->srvs, i);
+        npoints = srv->weight * 160;
+        for (j = 0; j < npoints; j++)
+        {
+            memset(hash_key, 0, UCT_INET6_ADDRSTRLEN + 10);
+            sprintf((char *)hash_key, "%s:%ld-%ld", srv->upstream_ip, srv->upstream_port, j);
+            point = uct_array_push(srvs->ring->points);
+            srvs->ring->number++;
+            point->srv = srv;
+            point->hash = md5_hash(hash_key);
+        }
     }
-    best = hash % n;
+    uct_free(hash_key);
 
-    return best;
+    // bubble sort ring points
+    uct_upstream_ring_point_t *points = srvs->ring->points->elts;
+    uct_upstream_ring_point_t tmp;
+    for (i = 0; i < srvs->ring->number; i++)
+    {
+        for (j = 0; j < srvs->ring->number - i - 1; j++)
+        {
+            if (points[j].hash > points[j + 1].hash)
+            {
+                tmp = points[j];
+                points[j] = points[j + 1];
+                points[j + 1] = tmp;
+            }
+        }
+    }
+    uct_log(cycle->log, UCT_LOG_INFO, "init hash ring points: %uld", srvs->ring->number);
+}
+
+static uct_upstream_ring_point_t * 
+uct_upstream_get_hash_point(uct_upstream_hash_ring_t *ring, uct_uint_t hash)
+{
+    // binary search
+    uct_uint_t i, j, k;
+    uct_upstream_ring_point_t *points;
+
+    points = ring->points->elts;
+    i = 0;
+    j = ring->number - 1;
+    while (i < j)
+    {
+        k = (i + j) / 2;
+        if (points[k].hash < hash)
+        {
+            i = k + 1;
+        }
+        else
+        {
+            j = k;
+        }
+    }
+    if ((i == ring->number - 1 && points[i].hash < hash) || i > ring->number - 1)
+    {
+        i = 0;
+    }
+    return &points[i];
+}
+
+static uct_upstream_ring_point_t * 
+uct_upstream_next_valid_point(uct_upstream_hash_ring_t *ring, uct_upstream_ring_point_t *point)
+{
+    uct_uint_t i, j, k;
+    uct_upstream_ring_point_t *points;
+
+    points = ring->points->elts;
+    i = 0;
+    j = ring->number - 1;
+    while (i < j)
+    {
+        k = (i + j) / 2;
+        if (points[k].hash < point->hash)
+        {
+            i = k + 1;
+        }
+        else
+        {
+            j = k;
+        }
+    }
+    for (k = i; k < ring->number; k++)
+    {
+        if (!points[k].srv->is_down && points[k].srv->is_fallback)
+        {
+            return &points[k];
+        }
+    }
+    return NULL;
+}
+
+static void
+md5_digest(char* inString, unsigned char md5pword[16])
+{
+    md5_state_t md5state;
+
+    md5_init(&md5state);
+    md5_append(&md5state, (unsigned char *)inString, strlen(inString));
+    md5_finish(&md5state, md5pword);
+}
+
+static uct_uint_t
+md5_hash(char* inString)
+{
+    unsigned char digest[16];
+
+    md5_digest(inString, digest);
+    return (uct_uint_t)(( digest[3] << 24 )
+                        | ( digest[2] << 16 )
+                        | ( digest[1] <<  8 )
+                        |   digest[0] );
 }
 
 static uct_connection_t *
@@ -238,13 +345,21 @@ uct_upstream_ip_hash_get_conn(uct_cycle_t *wk_cycle, uct_connection_t *client)
     uct_connection_t *conn;
     uct_cycle_t *cycle;
     uct_upstream_srv_t *srv;
+    uct_upstream_ring_point_t* point;
     char *upstream_port;
-    uct_uint_t best;
+    uct_uint_t last_hash;
 
     cycle = wk_cycle->master;
-    best = uct_upstream_ip_hash_get(cycle->srvs, cycle->srvs_n, &cycle->mutex,
-        cycle->log, client);
-    srv = (uct_upstream_srv_t *)uct_array_loc(cycle->srvs, best);
+    last_hash = md5_hash(client->ip_text);
+    point = uct_upstream_get_hash_point(cycle->upstream_srvs->ring, last_hash);
+    srv = point->srv;
+    if (srv->is_down && srv->is_fallback) {
+        point = uct_upstream_next_valid_point(cycle->upstream_srvs->ring, point);
+        if (point == NULL) {
+            return NULL;
+        }
+        srv = point->srv;
+    }
 
     upstream_port = uct_pnalloc(wk_cycle->pool, UCT_INET_PORTSTRLEN);
     uct_itoa(srv->upstream_port, upstream_port, 10);

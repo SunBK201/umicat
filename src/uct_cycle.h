@@ -36,9 +36,10 @@ struct uct_cycle_s {
     uct_array_t *srvs;
     uct_uint_t srvs_n;
     int client_epoll;
+    int upstream_epoll;
     struct epoll_event *client_events;
     struct epoll_event *upstream_events;
-    int upstream_epoll;
+    uct_upstream_srvs_t *upstream_srvs;
     sem_t mutex;
 };
 
