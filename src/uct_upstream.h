@@ -12,6 +12,7 @@
 #define UCT_IP_HASH     1
 #define UCT_LEAST_CONN  2
 #define UCT_RANDOM      3
+#define UCT_HEURISTIC   4
 
 struct uct_upstream_srv_s {
     char *upstream_ip;
@@ -20,6 +21,9 @@ struct uct_upstream_srv_s {
     uct_int_t current_weight;
     uct_int_t effective_weight;
     uct_uint_t connection_n;
+    uct_uint_t traffic;
+    uct_uint_t traffic_window;
+    uct_uint_t last_send_time;
 
     uct_uint_t fails;
     uct_uint_t max_fails;
@@ -55,7 +59,6 @@ struct uct_upstream_srvs_s{
     uct_uint_t number;
     uct_array_t *srvs; // uct_upstream_srv_t    
     uct_upstream_hash_ring_t *ring;
-    uct_uint_t lock;
 };
 
 uct_connection_t *uct_upstream_get_connetion(uct_cycle_t *wk_cycle,

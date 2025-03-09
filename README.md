@@ -23,6 +23,7 @@ sudo make install
 - `ip_hash`: IP-hash load balance policy.
 - `least_conn`: Least-connection load balance policy.
 - `random`: Random load balance policy.
+- `heuristic`: Heuristic traffic load balance policy.
 
 Please configure `/etc/umicat/umicat.conf` before you start using it:
 ```json
@@ -35,6 +36,7 @@ Please configure `/etc/umicat/umicat.conf` before you start using it:
             "upstream_ip": "127.0.0.1",
             "upstream_port": 9832,
             "weight": 10,
+            "traffic_window": 30,
             "max_fails": 2,
             "fail_timeout": 10,
             "is_fallback": 1,
@@ -51,6 +53,7 @@ Please configure `/etc/umicat/umicat.conf` before you start using it:
             "upstream_ip": "127.0.0.1",
             "upstream_port": 9999,
             "weight": 10,
+            "traffic_window": 30,
             "max_fails": 2,
             "fail_timeout": 10,
             "is_fallback": 1,

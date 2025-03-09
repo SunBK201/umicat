@@ -163,6 +163,8 @@ uct_epoll_process_events(uct_cycle_t *wk_cycle)
     void *buf;
     uct_uint_t n;
     uct_uint_t timeout;
+    uct_uint_t conn_traffic;
+    uct_uint_t now;
 
     timeout = 1;
     client_events = wk_cycle->client_events;
@@ -175,12 +177,26 @@ uct_epoll_process_events(uct_cycle_t *wk_cycle)
         upstream_conn = p->upstream;
         buf = uct_pnalloc(client_conn->pool, UCT_BUF_SIZE);
 
+        conn_traffic = 0;
         while ((n = uct_readn(client_conn->fd, buf, UCT_BUF_SIZE)) > 0) {
             uct_writen(upstream_conn->fd, buf, n);
+            conn_traffic += n;
+        }
+        if (conn_traffic > 0) {
             uct_log(wk_cycle->log, UCT_LOG_DEBUG,
                 "Proxy: %s:%s -> %s:%s, %lu Bytes", client_conn->ip_text,
                 client_conn->port_text, upstream_conn->ip_text,
-                upstream_conn->port_text, n);
+                upstream_conn->port_text, conn_traffic);
+            
+            upstream_conn->upstream_srv->traffic += conn_traffic;
+            now = time(NULL);
+            if (now - upstream_conn->upstream_srv->last_send_time >=
+                upstream_conn->upstream_srv->traffic_window) {
+                upstream_conn->upstream_srv->traffic = conn_traffic;
+                upstream_conn->upstream_srv->last_send_time = now;
+            } else {
+                upstream_conn->upstream_srv->traffic += conn_traffic;
+            }
         }
         if (n == 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {

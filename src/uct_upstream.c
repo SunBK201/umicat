@@ -17,7 +17,9 @@ static uct_connection_t *uct_upstream_least_conn_get_conn(
     uct_cycle_t *wk_cycle);
 static uct_uint_t uct_upstream_random_get(uct_array_t *srvs, uct_uint_t n);
 static uct_connection_t * uct_upstream_random_get_conn(uct_cycle_t *wk_cycle);
+static uct_connection_t *uct_upstream_heuristic_get_conn(uct_cycle_t *wk_cycle);
 static uct_inline uct_int_t power(uct_int_t i, uct_int_t j);
+static uct_uint_t md5_hash(char* inString);
 
 uct_array_t *srvs;
 uct_uint_t srvs_n;
@@ -35,6 +37,8 @@ uct_upstream_get_connetion(uct_cycle_t *wk_cycle, uct_connection_t *client)
         conn = uct_upstream_least_conn_get_conn(wk_cycle);
     } else if (wk_cycle->master->policy == UCT_RANDOM) {
         conn = uct_upstream_random_get_conn(wk_cycle);
+    } else if (wk_cycle->master->policy == UCT_HEURISTIC) {
+        conn = uct_upstream_heuristic_get_conn(wk_cycle);
     } else {
         uct_log(wk_cycle->log, UCT_LOG_ERROR, "upstream mode error, mode: %d",
             wk_cycle->master->policy);
@@ -499,6 +503,48 @@ uct_upstream_random_get_conn(uct_cycle_t *wk_cycle)
     best = uct_upstream_random_get(cycle->srvs, cycle->srvs_n);
     srv = (uct_upstream_srv_t *)uct_array_loc(cycle->srvs, best);
 
+    upstream_port = uct_pnalloc(wk_cycle->pool, UCT_INET_PORTSTRLEN);
+    uct_itoa(srv->upstream_port, upstream_port, 10);
+
+    fd = uct_upstream_connect(srv, wk_cycle);
+    if (fd <= 0) {
+        return NULL;
+    }
+
+    conn = uct_connection_init(wk_cycle, fd);
+    conn->ip_text = srv->upstream_ip;
+    conn->port_text = uct_itoa(srv->upstream_port, upstream_port, 10);
+    conn->upstream_srv = srv;
+
+    return conn;
+}
+
+static uct_connection_t *
+uct_upstream_heuristic_get_conn(uct_cycle_t *wk_cycle) {
+    uct_socket_t fd;
+    uct_connection_t *conn;
+    uct_cycle_t *cycle;
+    uct_upstream_srv_t *srv;
+    char *upstream_port;
+    uct_uint_t best;
+    uct_uint_t min_traffic;
+
+    min_traffic = UCT_MAX_INT_T_VALUE;
+    best = 0;
+    cycle = wk_cycle->master;
+    for (uct_uint_t i = 0; i < cycle->srvs_n; i++) {
+        srv = (uct_upstream_srv_t *)uct_array_loc(cycle->srvs, i);
+        uct_log(cycle->log, UCT_LOG_INFO, "upstream server %s:%d traffic: %d",
+            srv->upstream_ip, srv->upstream_port, srv->traffic);
+        if (srv->is_down && srv->is_fallback) {
+            continue;
+        }
+        if (srv->traffic < min_traffic) {
+            min_traffic = srv->traffic;
+            best = i;
+        }
+    }
+    srv = (uct_upstream_srv_t *)uct_array_loc(cycle->srvs, best);
     upstream_port = uct_pnalloc(wk_cycle->pool, UCT_INET_PORTSTRLEN);
     uct_itoa(srv->upstream_port, upstream_port, 10);
 
