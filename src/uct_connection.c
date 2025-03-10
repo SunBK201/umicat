@@ -263,3 +263,102 @@ uct_epoll_process_events(uct_cycle_t *wk_cycle)
 
     return UCT_OK;
 }
+
+uct_int_t
+uct_epoll_init_udp(uct_cycle_t *wk_cycle)
+{
+    wk_cycle->upstream_epoll = epoll_create(1024);
+    wk_cycle->upstream_events =
+        uct_palloc(wk_cycle->pool, sizeof(struct epoll_event) * 1024);
+    if (wk_cycle->upstream_events == NULL) {
+        return UCT_ERROR;
+    }
+    return UCT_OK;
+}
+
+uct_int_t
+uct_epoll_add(int epoll, uct_fd_t fd, void *c)
+{
+    struct epoll_event ev;
+
+    ev.events = EPOLLIN | EPOLLET;
+    ev.data.ptr = c;
+
+    if (epoll_ctl(epoll, EPOLL_CTL_ADD, fd, &ev) == -1) {
+        return UCT_ERROR;
+    }
+    return UCT_OK;
+}
+
+uct_int_t
+uct_epoll_add_proxy_connection_udp(uct_cycle_t *wk_cycle, uct_proxy_t *c)
+{
+    struct epoll_event ev;
+
+    ev.events = EPOLLIN | EPOLLET;
+    ev.data.ptr = c;
+
+    if (epoll_ctl(wk_cycle->upstream_epoll, EPOLL_CTL_ADD, c->upstream->fd,
+            &ev) == -1) {
+        uct_log(wk_cycle->log, UCT_LOG_ERROR,
+            "epoll_ctl(EPOLL_CTL_ADD, %d) failed", c->client->fd);
+        return UCT_ERROR;
+    }
+    return UCT_OK;
+}
+
+uct_int_t
+uct_epoll_process_events_udp(uct_cycle_t *wk_cycle)
+{
+    uct_int_t events;
+    struct epoll_event *upstream_events;
+    uct_proxy_t *p;
+    uct_connection_t *client_conn;
+    uct_connection_t *upstream_conn;
+    uct_uint_t timeout;
+    uct_uint_t n;
+    void *buf;
+
+    timeout = 1;
+    upstream_events = wk_cycle->upstream_events;
+    events = epoll_wait(wk_cycle->upstream_epoll, upstream_events, 1024, timeout);
+    for (size_t i = 0; i < events; i++)
+    {
+        p = upstream_events[i].data.ptr;
+        client_conn = p->client;
+        upstream_conn = p->upstream;
+
+        buf = uct_pnalloc(upstream_conn->pool, UCT_BUF_SIZE);
+        while ((n = uct_readn(upstream_conn->fd, buf, UCT_BUF_SIZE)) > 0) {
+            uct_writen(client_conn->fd, buf, n);
+            uct_log(wk_cycle->log, UCT_LOG_DEBUG,
+                "Proxy: %s:%s -> %s:%s, %lu Bytes", upstream_conn->ip_text,
+                upstream_conn->port_text, client_conn->ip_text,
+                client_conn->port_text, n);
+        }
+
+        if (n == 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                continue;
+            } else {
+                uct_log(wk_cycle->log, UCT_LOG_DEBUG,
+                    "Disconnected by upstream: %s:%s <-> %s:%s",
+                    client_conn->ip_text, client_conn->port_text,
+                    upstream_conn->ip_text, upstream_conn->port_text);
+                uct_close_socket(upstream_conn->fd);
+                uct_close_socket(client_conn->fd);
+                pthread_spin_lock(&upstream_conn->upstream_srv->lock);
+                upstream_conn->upstream_srv->connection_n--;
+                pthread_spin_unlock(&upstream_conn->upstream_srv->lock);
+                epoll_ctl(wk_cycle->upstream_epoll, EPOLL_CTL_DEL,
+                    upstream_conn->fd, NULL);
+                epoll_ctl(wk_cycle->client_epoll, EPOLL_CTL_DEL,
+                    client_conn->fd, NULL);
+                uct_destroy_pool(upstream_conn->pool);
+                uct_destroy_pool(client_conn->pool);
+                wk_cycle->connection_n--;
+            }
+        }
+    }
+    return UCT_OK;
+}

@@ -510,6 +510,15 @@ uct_worker_thread_cycle_udp(void *arg)
     uct_uint_t n;
     uct_connection_t *cli_conn;
     uct_connection_t *up_conn;
+    uct_connection_t *back_conn;
+    uct_proxy_t *proxy_conn;
+    uct_fd_t backfd;
+    uct_fd_t listenfd;
+    // uct_fd_t timerfd;
+    // struct itimerspec its;
+    socklen_t listenlen;
+    struct sockaddr_in listenaddr;
+    int optval = 1;
 
     tid = uct_pthread_self();
     uct_pthread_detach(tid);
@@ -523,9 +532,13 @@ uct_worker_thread_cycle_udp(void *arg)
     wk_cycle->master = cycle;
     wk_cycle->connection_n = 0;
 
-    if (uct_epoll_init(wk_cycle) != UCT_OK) {
+    if (uct_epoll_init_udp(wk_cycle) != UCT_OK) {
         return NULL;
     }
+
+    listenfd = cycle->listenfd;
+    listenlen = sizeof(listenaddr);
+    getsockname(listenfd, (struct sockaddr *)&listenaddr, &listenlen);
 
     uct_log(cycle->log, UCT_LOG_INFO, "thread worker start: %x", tid);
 
@@ -534,22 +547,53 @@ uct_worker_thread_cycle_udp(void *arg)
     while (1) {
         n = recvfrom(wk_cycle->listenfd, buf, UCT_DEFAULT_POOL_SIZE, 0,
             (struct sockaddr *)&clientaddr, &clientlen);
-
         cli_conn = uct_connection_init(cycle, cycle->listenfd);
-
         uct_getnameinfo((struct sockaddr *)&clientaddr, clientlen,
             cli_conn->ip_text, UCT_INET_ADDRSTRLEN, cli_conn->port_text,
             UCT_INET_PORTSTRLEN, NI_NUMERICHOST | NI_NUMERICSERV, cycle);
-
         uct_log(cycle->log, UCT_LOG_DEBUG, "accepted udp packet from (%s:%s)",
             cli_conn->ip_text, cli_conn->port_text);
+        
+        backfd = uct_open_clientfd_udp(cli_conn->ip_text, cli_conn->port_text, cycle);
+        if (backfd < 0) {
+            uct_log(cycle->log, UCT_LOG_ERROR, "open udp clientfd failed");
+            return NULL;
+        }
+        uct_setsockopt(backfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval, sizeof(optval), cycle);
+        uct_setsockopt(backfd, SOL_SOCKET, SO_REUSEPORT, (const void *)&optval, sizeof(optval), cycle);
+        uct_bind(backfd, (struct sockaddr *)&listenaddr, listenlen, cycle);
+        uct_connect(backfd, (struct sockaddr *)&clientaddr, clientlen, cycle);
+        back_conn = uct_connection_init(cycle, backfd);
+        uct_getnameinfo((struct sockaddr *)&clientaddr, clientlen,
+            back_conn->ip_text, UCT_INET_ADDRSTRLEN, back_conn->port_text,
+            UCT_INET_PORTSTRLEN, NI_NUMERICHOST | NI_NUMERICSERV, cycle);
 
         up_conn = uct_upstream_get_connetion(wk_cycle, cli_conn);
-
+        uct_nonblocking(up_conn->fd);
+        proxy_conn = uct_pnalloc(up_conn->pool, sizeof(uct_proxy_t));
+        proxy_conn->client = back_conn;
+        proxy_conn->upstream = up_conn;
+        uct_epoll_add_proxy_connection_udp(wk_cycle, proxy_conn);
         uct_log(cycle->log, UCT_LOG_INFO,
-            "[THREAD][%x] start proxy %s:%s <-> %s:%s", tid,
+            "[THREAD][%x] start udp proxy %s:%s <-> %s:%s", tid,
             cli_conn->ip_text, cli_conn->port_text, up_conn->ip_text,
             up_conn->port_text);
+        
+        // timerfd = timerfd_create(CLOCK_MONOTONIC, 0);
+        // if (timerfd < 0) {
+        //     uct_log(cycle->log, UCT_LOG_ERROR, "timerfd_create error: %s",
+        //         strerror(errno));
+        //     return UCT_ERROR;
+        // }
+        // its.it_value.tv_sec = 60;
+        // its.it_value.tv_nsec = 0;
+        // its.it_interval.tv_sec = 60;
+        // its.it_interval.tv_nsec = 0;
+        // if (timerfd_settime(timerfd, 0, &its, NULL) < 0) {
+        //     uct_log(cycle->log, UCT_LOG_ERROR, "timerfd_settime error: %s",
+        //         strerror(errno));
+        //     return UCT_ERROR;
+        // }
 
         bzero(&servaddr, sizeof(servaddr));
         servaddr.sin_family = AF_INET;
@@ -557,6 +601,10 @@ uct_worker_thread_cycle_udp(void *arg)
         servaddr.sin_port = htons(atoi(up_conn->port_text));
         n = sendto(up_conn->fd, buf, n, 0, (struct sockaddr *)&servaddr,
             sizeof(servaddr));
+        uct_epoll_process_events_udp(wk_cycle);
+        uct_destroy_pool(cli_conn->pool);
+        continue;
+        // dead code
         n = recvfrom(up_conn->fd, buf, UCT_DEFAULT_POOL_SIZE, 0,
             NULL, 0);
         n = sendto(cycle->listenfd, buf, n, 0, (struct sockaddr
