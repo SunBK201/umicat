@@ -1,0 +1,40 @@
+services:
+  web1:
+    image: nginx:latest
+    container_name: web1
+    ports:
+      - "8020:80"
+    volumes:
+      - ./nginx_web1.conf:/etc/nginx/conf.d/default.conf
+      - ./logs/web1:/var/log/nginx
+    networks:
+      - nginx_net
+
+  web2:
+    image: nginx:latest
+    container_name: web2
+    ports:
+      - "8021:80"
+    volumes:
+      - ./nginx_web2.conf:/etc/nginx/conf.d/default.conf
+      - ./logs/web2:/var/log/nginx
+    networks:
+      - nginx_net
+
+  load_balancer:
+    image: nginx:latest
+    container_name: tcp_lb
+    depends_on:
+      - web1
+      - web2
+    ports:
+      - "8085:80"
+    volumes:
+      - ./nginx_lb.conf:/etc/nginx/nginx.conf:ro
+      - ./logs/lb:/var/log/nginx
+    networks:
+      - nginx_net
+
+networks:
+  nginx_net:
+    driver: bridge
