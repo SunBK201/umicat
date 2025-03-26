@@ -34,10 +34,12 @@ main(int argc, char *const *argv)
         return 0;
     }
 
+    /*
     if (uct_check_user() != UCT_OK) {
         uct_write_stderr("umicat: you are not root user\n");
         return 1;
     }
+    */
 
     uct_show_banner();
 

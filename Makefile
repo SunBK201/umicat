@@ -53,6 +53,7 @@ run: all
 	./umicat -c conf/umicat.conf -l umicat.log
 
 test: debug
+	sudo setcap 'cap_net_bind_service,cap_net_raw=+eip' umicat
 	./umicat -c conf/umicat.conf -l umicat.log
 
 debug: $(SRCS)
